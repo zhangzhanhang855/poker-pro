@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fight the Landlord (斗地主) - Real-time Room</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 16px; }
+    .card { background: #1e293b; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; color: #38bdf8; }
+    input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 1rem; }
+    button { width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 6px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    .btn-primary { background: #0284c7; color: #fff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .hidden { display: none; }
+    ul { list-style: none; padding: 0; }
+    li { background: #334155; margin-bottom: 6px; padding: 8px 12px; border-radius: 4px; display: flex; justify-content: space-between; }
+    .board { background: #0f172a; min-height: 120px; border-radius: 6px; padding: 12px; margin-bottom: 16px; border: 1px dashed #475569; overflow-y: auto; max-height: 200px; }
+    .log-item { font-size: 0.9rem; margin-bottom: 6px; color: #cbd5e1; }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <div class="card">
+    <h1>JR AI Landlord Multi-Sync</h1>
+
+    <!-- Lobby View -->
+    <div id="lobby-view">
+      <input type="text" id="username" placeholder="Your Username" />
+      <input type="text" id="roomId" placeholder="Room ID" />
+      <button class="btn-primary" onclick="createRoom()">Create Room</button>
+      <button class="btn-success" onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <!-- Room View -->
+    <div id="room-view" class="hidden">
+      <h3>Room Code: <span id="room-code-display" style="color: #38bdf8;"></span></h3>
+      <h4>Players (<span id="player-count">0</span>/3)</h4>
+      <ul id="player-list"></ul>
+
+      <h4>Table Actions</h4>
+      <div id="action-board" class="board">
+        <div style="color: #64748b;">Waiting for cards to be played...</div>
+      </div>
+
+      <input type="text" id="card-input" placeholder="Type played cards (e.g., 3 3 3 4)" />
+      <button class="btn-primary" onclick="playCards()">Play Cards</button>
+      <button class="btn-danger" onclick="finishGame()">End & Save to DB</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let activeRoomId = null;
+
+    function createRoom() {
+      const username = document.getElementById('username').value.trim();
+      const roomId = document.getElementById('roomId').value.trim();
+      if (!username || !roomId) return alert('Please enter both name and Room ID');
+      socket.emit('create_room', { roomId, username });
+    }
+
+    function joinRoom() {
+      const username = document.getElementById('username').value.trim();
+      const roomId = document.getElementById('roomId').value.trim();
+      if (!username || !roomId) return alert('Please enter both name and Room ID');
+      socket.emit('join_room', { roomId, username });
+    }
+
+    function playCards() {
+      const cards = document.getElementById('card-input').value.trim();
+      if (!cards) return;
+      socket.emit('play_cards', { roomId: activeRoomId, cards });
+      document.getElementById('card-input').value = '';
+    }
+
+    function finishGame() {
+      if (confirm('Save session logs to MongoDB Atlas and exit?')) {
+        socket.emit('finish_game', { roomId: activeRoomId });
+      }
+    }
+
+    // --- Socket Listeners ---
+    socket.on('room_created', ({ roomId, room }) => {
+      openRoomView(roomId, room);
+    });
+
+    socket.on('room_updated', (room) => {
+      updateRoomUI(room);
+    });
+
+    socket.on('game_start', ({ message, room }) => {
+      alert(message);
+      updateRoomUI(room);
+    });
+
+    socket.on('cards_played', (log) => {
+      const board = document.getElementById('action-board');
+      if (board.children[0] && board.children[0].style.color) {
+        board.innerHTML = '';
+      }
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.innerHTML = `<strong>${log.username}</strong> played: <span style="color:#facc15;">${log.cards}</span> <small>(${log.timestamp})</small>`;
+      board.appendChild(item);
+      board.scrollTop = board.scrollHeight;
+    });
+
+    socket.on('game_ended', ({ message }) => {
+      alert(message);
+      window.location.reload();
+    });
+
+    socket.on('error_message', (msg) => alert(msg));
+
+    // UI Helpers
+    function openRoomView(roomId, room) {
+      activeRoomId = roomId;
+      document.getElementById('lobby-view').classList.add('hidden');
+      document.getElementById('room-view').classList.remove('hidden');
+      document.getElementById('room-code-display').innerText = roomId;
+      updateRoomUI(room);
+    }
+
+    function updateRoomUI(room) {
+      document.getElementById('player-count').innerText = room.players.length;
+      const list = document.getElementById('player-list');
+      list.innerHTML = room.players
+        .map(p => `<li><span>${p.username}</span> <span>Pos: ${p.position}</span></li>`)
+        .join('');
+    }
+  </script>
+</body>
+</html>
