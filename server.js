@@ -16,14 +16,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 1. 连接 MongoDB Atlas 持久化数据库 ---
+// --- 1. 连接 MongoDB Atlas ---
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/landlord_db";
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ [MongoDB Atlas] 数据库连接成功！'))
-  .catch(err => console.error('❌ [MongoDB Atlas] 连接失败:', err));
+  .then(() => console.log('✅ MongoDB Atlas 连接成功！'))
+  .catch(err => console.error('❌ MongoDB Atlas 连接失败:', err));
 
-// 用户资产模型 Schema
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   coins: { type: Number, default: 1000 },
@@ -32,7 +31,7 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
-// REST API: 账号快速登录 / 注册
+// REST API: 账号登录/注册
 app.post('/api/user/login', async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: '请输入用户名' });
@@ -49,11 +48,11 @@ app.post('/api/user/login', async (req, res) => {
   }
 });
 
-// --- 2. 内存超低延迟房间管理 & 实时广播 ---
+// --- 2. 内存房间管理 (二人模式) ---
 const rooms = {};
 
 io.on('connection', (socket) => {
-  console.log(`[Socket] 客户端已连接: ${socket.id}`);
+  console.log(`[Socket] 客户端连接: ${socket.id}`);
 
   // 创建房间
   socket.on('create_room', async ({ roomId, username }) => {
@@ -81,8 +80,9 @@ io.on('connection', (socket) => {
     if (!room) {
       return socket.emit('error_message', '房间不存在！');
     }
-    if (room.players.length >= 3) {
-      return socket.emit('error_message', '房间人员已满 (上限3人)！');
+    // 【修改点】上限改为 2 人
+    if (room.players.length >= 2) {
+      return socket.emit('error_message', '房间已满（上限2人）！');
     }
 
     const user = await User.findOne({ username });
@@ -94,17 +94,17 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('room_updated', room);
 
-    // 满 3 人自动开局
-    if (room.players.length === 3) {
+    // 【修改点】满 2 人自动开始游戏
+    if (room.players.length === 2) {
       room.status = 'playing';
       io.to(roomId).emit('game_start', {
-        message: '人员已齐备，对局正式开始！',
+        message: '两位玩家已就位，对局正式开始！',
         room
       });
     }
   });
 
-  // 实时出牌同步广播
+  // 实时出牌广播
   socket.on('play_cards', ({ roomId, cards }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -120,7 +120,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('cards_played', playData);
   });
 
-  // 游戏结算逻辑 (胜者加 300 金币)
+  // 游戏结算
   socket.on('game_over', async ({ roomId, winnerUsername }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -136,16 +136,16 @@ io.on('connection', (socket) => {
         winner: winnerUsername,
         reward: 300,
         newBalance: updatedUser ? updatedUser.coins : null,
-        message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！加成 +300 金币！`
+        message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！获得 300 金币！`
       });
 
       delete rooms[roomId];
     } catch (err) {
-      console.error('更新金币资产失败:', err);
+      console.error('更新资产失败:', err);
     }
   });
 
-  // 掉线清理机制
+  // 断开连接处理
   socket.on('disconnect', () => {
     for (const roomId in rooms) {
       const room = rooms[roomId];
@@ -165,4 +165,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 [Render] 游戏服务器已在端口 ${PORT} 启动！`));
+server.listen(PORT, () => console.log(`🚀 服务运行于端口: ${PORT}`));
