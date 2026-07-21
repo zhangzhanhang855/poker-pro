@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>欢乐斗地主 - 2人对决版</title>
+  <title>欢乐斗地主 - 回合同步防连出版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     * {
@@ -115,7 +115,7 @@
       font-weight: bold;
       cursor: pointer;
       outline: none;
-      transition: transform 0.1s ease;
+      transition: transform 0.1s ease, opacity 0.2s;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       display: inline-flex;
       justify-content: center;
@@ -124,6 +124,13 @@
     }
 
     .btn:active { transform: scale(0.92); }
+    /* 禁用未轮到出牌的按钮样式 */
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+      filter: grayscale(1);
+    }
 
     .btn-gold { background: linear-gradient(180deg, #ffe066 0%, #f59e0b 100%); color: #78350f; }
     .btn-blue { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color: #fff; }
@@ -138,6 +145,21 @@
       display: flex;
       gap: 10px;
       z-index: 20;
+    }
+
+    .turn-tip {
+      position: absolute;
+      bottom: 170px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #facc15;
+      padding: 6px 16px;
+      border-radius: 20px;
+      color: #facc15;
+      font-weight: bold;
+      font-size: 13px;
+      pointer-events: none;
     }
 
     .modal-overlay {
@@ -209,16 +231,18 @@
           </div>
         </div>
 
-        <!-- 【修改点】显示人数 0/2 -->
         <div class="room-badge hidden" id="room-badge">
           房间号: <span id="room-id-text">-</span> | 人数: <span id="player-count">0</span>/2
         </div>
       </div>
 
+      <!-- 回合状态提示文字 -->
+      <div class="turn-tip hidden" id="turn-tip">等待游戏开始...</div>
+
       <div class="action-bar hidden" id="action-bar">
-        <button class="btn btn-dark" onclick="gameApp.passTurn()">不出</button>
+        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">不出</button>
         <button class="btn btn-blue" onclick="gameApp.sortHand()">理牌</button>
-        <button class="btn btn-green" onclick="gameApp.playCards()">出牌</button>
+        <button class="btn btn-green" id="btn-play" onclick="gameApp.playCards()">出牌</button>
       </div>
     </div>
 
@@ -294,6 +318,7 @@
         this.selectedIndices = new Set();
         this.players = [];
         this.tableCards = [];
+        this.isMyTurn = false; // 当前是否轮到自己出牌
 
         this.initCanvasSize();
         this.bindEvents();
@@ -362,12 +387,20 @@
           this.updateRoomState(room);
         });
 
-        // 满 2 人自动开局
-        socket.on('game_start', ({ message, room }) => {
+        // 满2人自动开局 & 初始化首个出牌回合
+        socket.on('game_start', ({ message, room, currentTurnSocketId }) => {
           alert(message);
           this.updateRoomState(room);
           document.getElementById('action-bar').classList.remove('hidden');
+          document.getElementById('turn-tip').classList.remove('hidden');
+          
           this.dealCards();
+          this.updateTurnState(currentTurnSocketId);
+        });
+
+        // 监听回合切换广播
+        socket.on('turn_changed', ({ currentTurnSocketId, username }) => {
+          this.updateTurnState(currentTurnSocketId, username);
         });
 
         socket.on('cards_played', (data) => {
@@ -376,12 +409,36 @@
 
         socket.on('game_result', (data) => {
           document.getElementById('action-bar').classList.add('hidden');
+          document.getElementById('turn-tip').classList.add('hidden');
           document.getElementById('settlement-modal').classList.remove('hidden');
           document.getElementById('settlement-title').innerText = data.winner === this.user.username ? '🎉 胜利获胜！' : '💔 遗憾落败';
           document.getElementById('settlement-desc').innerText = data.message;
         });
 
         socket.on('error_message', (msg) => alert(msg));
+      }
+
+      // 更新回合与按钮控制锁
+      updateTurnState(currentTurnSocketId, currentTurnUsername = '') {
+        this.isMyTurn = (socket.id === currentTurnSocketId);
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnPass = document.getElementById('btn-pass');
+        const turnTip = document.getElementById('turn-tip');
+
+        if (this.isMyTurn) {
+          btnPlay.disabled = false;
+          btnPass.disabled = false;
+          turnTip.innerText = "👉 轮到你的回合，请出牌！";
+          turnTip.style.color = "#4ade80";
+          turnTip.style.borderColor = "#4ade80";
+        } else {
+          btnPlay.disabled = true;
+          btnPass.disabled = true;
+          turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】正在思考中...`;
+          turnTip.style.color = "#facc15";
+          turnTip.style.borderColor = "#facc15";
+        }
       }
 
       updateRoomState(room) {
@@ -446,7 +503,6 @@
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
-        // 两人每人发 17 张
         this.myHand = deck.slice(0, 17);
         this.sortHand();
       }
@@ -457,6 +513,7 @@
       }
 
       playCards() {
+        if (!this.isMyTurn) return alert('还没轮到你出牌！');
         if (this.selectedIndices.size === 0) return alert('请先选择要出的手牌！');
 
         const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
@@ -477,20 +534,24 @@
         }
       }
 
-      passTurn() { this.selectedIndices.clear(); }
+      passTurn() {
+        if (!this.isMyTurn) return alert('还没轮到你操作！');
+        this.selectedIndices.clear();
+        socket.emit('pass_turn', { roomId: this.roomId });
+      }
 
       backToLobby() { window.location.reload(); }
 
       renderLoop() {
         this.ctx.clearRect(0, 0, this.width, this.height);
 
-        // 桌面标题背景
+        // 桌面标题
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         this.ctx.font = 'bold 28px sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.fillText('斗地主 · 2人PK场', this.width / 2, this.height / 2 - 30);
 
-        // 【修改点】两人模式下的对手头像绘制在顶部中央/对面
+        // 对手信息
         this.players.forEach((p) => {
           const isMe = p.username === (this.user ? this.user.username : '');
           if (!isMe) {
@@ -508,7 +569,7 @@
           }
         });
 
-        // 桌面出牌显示
+        // 桌面出牌记录
         if (this.tableCards.length > 0) {
           const last = this.tableCards[this.tableCards.length - 1];
           this.ctx.fillStyle = '#facc15';
@@ -517,7 +578,7 @@
           this.ctx.fillText(`${last.username}: ${last.cards}`, this.width / 2, this.height / 2 + 20);
         }
 
-        // 手牌渲染
+        // 渲染手牌
         if (this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = Math.min(60, (this.width - 40) / total);
