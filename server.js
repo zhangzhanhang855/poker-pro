@@ -31,7 +31,6 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
-// REST API: 账号登录/注册
 app.post('/api/user/login', async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: '请输入用户名' });
@@ -48,7 +47,7 @@ app.post('/api/user/login', async (req, res) => {
   }
 });
 
-// --- 2. 内存房间管理 (二人模式) ---
+// --- 2. 内存房间管理（带回合控制）---
 const rooms = {};
 
 io.on('connection', (socket) => {
@@ -66,7 +65,8 @@ io.on('connection', (socket) => {
     rooms[roomId] = {
       id: roomId,
       players: [{ id: socket.id, username, coins, position: 0 }],
-      status: 'waiting'
+      status: 'waiting',
+      turnIndex: 0 // 记录当前轮到的玩家位置索引 (0 或 1)
     };
 
     socket.join(roomId);
@@ -80,7 +80,6 @@ io.on('connection', (socket) => {
     if (!room) {
       return socket.emit('error_message', '房间不存在！');
     }
-    // 【修改点】上限改为 2 人
     if (room.players.length >= 2) {
       return socket.emit('error_message', '房间已满（上限2人）！');
     }
@@ -94,30 +93,78 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('room_updated', room);
 
-    // 【修改点】满 2 人自动开始游戏
+    // 满 2 人开启游戏并随机指定谁先出
     if (room.players.length === 2) {
       room.status = 'playing';
+      // 随机决定谁先出牌 (0 或 1)
+      room.turnIndex = Math.floor(Math.random() * 2);
+      const firstPlayer = room.players[room.turnIndex];
+
       io.to(roomId).emit('game_start', {
-        message: '两位玩家已就位，对局正式开始！',
-        room
+        message: `对局开始！随机指定玩家【${firstPlayer.username}】先出牌！`,
+        room,
+        currentTurnSocketId: firstPlayer.id
       });
     }
   });
 
-  // 实时出牌广播
+  // 玩家出牌事件（加入回合安全锁）
   socket.on('play_cards', ({ roomId, cards }) => {
     const room = rooms[roomId];
     if (!room) return;
 
-    const player = room.players.find(p => p.id === socket.id);
+    const currentTurnPlayer = room.players[room.turnIndex];
+    
+    // 【安全检查】如果不是当前回合玩家发起的，拒绝请求！
+    if (currentTurnPlayer.id !== socket.id) {
+      return socket.emit('error_message', '还没轮到你出牌！');
+    }
+
     const playData = {
       playerId: socket.id,
-      username: player ? player.username : '未知玩家',
+      username: currentTurnPlayer.username,
       cards,
       timestamp: new Date().toLocaleTimeString()
     };
 
+    // 广播刚出的牌
     io.to(roomId).emit('cards_played', playData);
+
+    // 【核心修复】将回合切换给对方 (0 -> 1, 1 -> 0)
+    room.turnIndex = (room.turnIndex + 1) % 2;
+    const nextPlayer = room.players[room.turnIndex];
+
+    io.to(roomId).emit('turn_changed', {
+      currentTurnSocketId: nextPlayer.id,
+      username: nextPlayer.username
+    });
+  });
+
+  // 玩家选择“不出” Pass
+  socket.on('pass_turn', ({ roomId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    const currentTurnPlayer = room.players[room.turnIndex];
+    if (currentTurnPlayer.id !== socket.id) {
+      return socket.emit('error_message', '还没轮到你操作！');
+    }
+
+    io.to(roomId).emit('cards_played', {
+      playerId: socket.id,
+      username: currentTurnPlayer.username,
+      cards: '要不起 / 不出',
+      timestamp: new Date().toLocaleTimeString()
+    });
+
+    // 切换回合给对方
+    room.turnIndex = (room.turnIndex + 1) % 2;
+    const nextPlayer = room.players[room.turnIndex];
+
+    io.to(roomId).emit('turn_changed', {
+      currentTurnSocketId: nextPlayer.id,
+      username: nextPlayer.username
+    });
   });
 
   // 游戏结算
