@@ -3,45 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>斗地主 - 多端实时同步</title>
+  <title>JR AI 实时同步斗地主</title>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 16px; }
-    .card { background: #1e293b; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .card { background: #1e293b; border-radius: 12px; padding: 24px; width: 100%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; color: #38bdf8; }
     .user-info { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 16px; text-align: center; }
     input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 1rem; }
-    button { width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 6px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    button { padding: 10px 16px; margin: 4px; border-radius: 6px; border: none; font-size: 0.95rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
     .btn-primary { background: #0284c7; color: #fff; }
     .btn-primary:hover { background: #0369a1; }
     .btn-success { background: #16a34a; color: #fff; }
     .btn-success:hover { background: #15803d; }
     .btn-warning { background: #eab308; color: #000; }
+    .btn-secondary { background: #64748b; color: #fff; }
     .hidden { display: none; }
     ul { list-style: none; padding: 0; }
     li { background: #334155; margin-bottom: 6px; padding: 8px 12px; border-radius: 4px; display: flex; justify-content: space-between; }
-    .board { background: #0f172a; min-height: 120px; border-radius: 6px; padding: 12px; margin-bottom: 16px; border: 1px dashed #475569; overflow-y: auto; max-height: 200px; }
+    
+    /* 桌面与出牌日志 */
+    .board { background: #0f172a; min-height: 100px; border-radius: 6px; padding: 12px; margin-bottom: 16px; border: 1px dashed #475569; overflow-y: auto; max-height: 160px; }
     .log-item { font-size: 0.9rem; margin-bottom: 6px; color: #cbd5e1; }
+    
+    /* 手牌 UI 区 */
+    .hand-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; min-height: 60px; padding: 10px; background: #0f172a; border-radius: 8px; justify-content: center; }
+    .poker-card {
+      width: 42px; height: 60px; background: #ffffff; color: #000; border-radius: 6px;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      font-weight: bold; cursor: pointer; user-select: none; transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 1.1rem;
+    }
+    .poker-card.red { color: #dc2626; }
+    .poker-card.selected { transform: translateY(-12px); box-shadow: 0 0 10px #38bdf8; border: 2px solid #38bdf8; }
+    
+    .action-bar { display: flex; justify-content: space-between; margin-top: 12px; }
   </style>
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
   <div class="card">
-    <h1>JR AI 斗地主同步大厅</h1>
+    <h1>JR AI 实时同步斗地主</h1>
 
     <div id="login-view">
       <input type="text" id="username-input" placeholder="输入您的用户名" />
-      <button class="btn-primary" onclick="login()">进入游戏</button>
+      <button class="btn-primary" style="width:100%" onclick="login()">进入游戏</button>
     </div>
 
     <div id="lobby-view" class="hidden">
       <div class="user-info">
         玩家: <strong id="display-name">-</strong> | 🪙 金币: <strong id="display-coins" style="color:#facc15;">0</strong>
       </div>
-      <input type="text" id="roomId" placeholder="输入房间号" />
-      <button class="btn-primary" onclick="createRoom()">创建房间</button>
-      <button class="btn-success" onclick="joinRoom()">加入房间</button>
+      <input type="text" id="roomId" placeholder="输入房间号 (例: 888)" />
+      <div style="display:flex;">
+        <button class="btn-primary" style="flex:1" onclick="createRoom()">创建房间</button>
+        <button class="btn-success" style="flex:1" onclick="joinRoom()">加入房间</button>
+      </div>
     </div>
 
     <div id="room-view" class="hidden">
@@ -49,14 +67,26 @@
       <h4>玩家列表 (<span id="player-count">0</span>/3)</h4>
       <ul id="player-list"></ul>
 
-      <h4>桌面实时出牌广播</h4>
+      <h4>桌面出牌情况</h4>
       <div id="action-board" class="board">
-        <div style="color: #64748b;">等待玩家出牌...</div>
+        <div style="color: #64748b;">等待玩家加入并开始游戏...</div>
       </div>
 
-      <input type="text" id="card-input" placeholder="输入要出的牌 (例: 3 3 3 4)" />
-      <button class="btn-primary" onclick="playCards()">确认出牌</button>
-      <button class="btn-warning" onclick="claimWin()">模拟获胜（赢得 300 金币）</button>
+      <h4>我的手牌</h4>
+      <div id="hand-cards" class="hand-container">
+        <div style="color:#64748b;">等待发牌...</div>
+      </div>
+
+      <div class="action-bar">
+        <div>
+          <button class="btn-secondary" onclick="sortHandCards()">一键理牌</button>
+          <button class="btn-secondary" onclick="clearSelection()">取消选择</button>
+        </div>
+        <div>
+          <button class="btn-primary" onclick="playSelectedCards()">出牌</button>
+          <button class="btn-warning" onclick="claimWin()">模拟胜利 (+300金币)</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -64,8 +94,16 @@
     const socket = io();
     let currentUser = null;
     let activeRoomId = null;
+    let myHand = []; // 当前玩家手牌数据 [{ id, rank, suit, value, label }]
+    let selectedIndices = new Set();
 
-    // 1. 用户登录/获取账户信息
+    // 牌面大小权重（3最小，王最大）
+    const RANK_VALUES = {
+      '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10,
+      'J':11, 'Q':12, 'K':13, 'A':14, '2':15, '小王':16, '大王':17
+    };
+
+    // --- 1. 登录与大厅逻辑 ---
     async function login() {
       const username = document.getElementById('username-input').value.trim();
       if (!username) return alert('请输入用户名');
@@ -86,7 +124,6 @@
       }
     }
 
-    // 2. 房间操作
     function createRoom() {
       const roomId = document.getElementById('roomId').value.trim();
       if (!roomId) return alert('请输入房间号');
@@ -99,20 +136,180 @@
       socket.emit('join_room', { roomId, username: currentUser.username });
     }
 
-    // 3. 实时出牌
-    function playCards() {
-      const cards = document.getElementById('card-input').value.trim();
-      if (!cards) return;
-      socket.emit('play_cards', { roomId: activeRoomId, cards });
-      document.getElementById('card-input').value = '';
+    // --- 2. 牌型解析引擎 (支持所有经典牌型) ---
+    function parseHandType(cards) {
+      if (!cards || cards.length === 0) return null;
+
+      // 按权重排序
+      const sorted = [...cards].sort((a, b) => a.value - b.value);
+      const len = sorted.length;
+      const values = sorted.map(c => c.value);
+
+      // 统计每个权重的张数
+      const counts = {};
+      values.forEach(v => counts[v] = (counts[v] || 0) + 1);
+      const countValues = Object.values(counts);
+      const uniqueKeys = Object.keys(counts).map(Number).sort((a,b)=>a-b);
+
+      // 1. 王炸
+      if (len === 2 && values[0] === 16 && values[1] === 17) return { type: '王炸', rank: 17 };
+
+      // 2. 单张
+      if (len === 1) return { type: '单张', rank: values[0] };
+
+      // 3. 对子
+      if (len === 2 && values[0] === values[1]) return { type: '对子', rank: values[0] };
+
+      // 4. 三张
+      if (len === 3 && countValues.length === 1) return { type: '三张', rank: values[0] };
+
+      // 5. 炸弹
+      if (len === 4 && countValues.length === 1) return { type: '炸弹', rank: values[0] };
+
+      // 6. 三带一
+      if (len === 4 && countValues.includes(3) && countValues.includes(1)) {
+        const tripleRank = uniqueKeys.find(k => counts[k] === 3);
+        return { type: '三带一', rank: tripleRank };
+      }
+
+      // 7. 三带二 (带对子)
+      if (len === 5 && countValues.includes(3) && countValues.includes(2)) {
+        const tripleRank = uniqueKeys.find(k => counts[k] === 3);
+        return { type: '三带二', rank: tripleRank };
+      }
+
+      // 8. 顺子 (至少5张，不能含2或双王)
+      if (len >= 5 && countValues.every(c => c === 1) && values[len-1] < 15) {
+        if (values[len-1] - values[0] === len - 1) {
+          return { type: '顺子', rank: values[len-1] };
+        }
+      }
+
+      // 9. 连对 (至少3对，不含2或双王)
+      if (len >= 6 && len % 2 === 0 && countValues.every(c => c === 2) && values[len-1] < 15) {
+        if (uniqueKeys[uniqueKeys.length-1] - uniqueKeys[0] === uniqueKeys.length - 1) {
+          return { type: '连对', rank: uniqueKeys[uniqueKeys.length-1] };
+        }
+      }
+
+      // 10. 四带二 (单张或对子)
+      if (len === 6 && countValues.includes(4)) {
+        const quadRank = uniqueKeys.find(k => counts[k] === 4);
+        return { type: '四带二', rank: quadRank };
+      }
+
+      // 11. 飞机 (连续的三张，可带单/双)
+      if (len >= 6) {
+        const triples = uniqueKeys.filter(k => counts[k] >= 3 && k < 15);
+        if (triples.length >= 2) {
+          // 检查连续性
+          for (let i = 0; i <= triples.length - 2; i++) {
+            if (triples[i+1] - triples[i] === 1) {
+              const planeLen = 2; // 简易判断双飞机
+              const totalPlaneCards = planeLen * 3;
+              if (len === totalPlaneCards || len === totalPlaneCards + planeLen || len === totalPlaneCards + planeLen * 2) {
+                return { type: '飞机', rank: triples[i+1] };
+              }
+            }
+          }
+        }
+      }
+
+      return null; // 不符合合法牌型
     }
 
-    // 4. 模拟赢局并结算 300 金币
+    // --- 3. 手牌渲染与理牌逻辑 ---
+    function generateDeck() {
+      const suits = ['♠', '♥', '♣', '♦'];
+      const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+      const deck = [];
+      
+      ranks.forEach(r => {
+        suits.forEach(s => {
+          deck.push({ rank: r, suit: s, value: RANK_VALUES[r], label: s + r });
+        });
+      });
+      deck.push({ rank: '小王', suit: '', value: 16, label: '小王' });
+      deck.push({ rank: '大王', suit: '', value: 17, label: '大王' });
+      return deck;
+    }
+
+    // 发牌逻辑（随机发17张）
+    function dealRandomHand() {
+      const deck = generateDeck();
+      // 洗牌
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      myHand = deck.slice(0, 17);
+      sortHandCards(); // 默认自动排好序
+    }
+
+    // 一键理牌：按牌面从大到小排列
+    function sortHandCards() {
+      myHand.sort((a, b) => b.value - a.value);
+      selectedIndices.clear();
+      renderHandUI();
+    }
+
+    function renderHandUI() {
+      const container = document.getElementById('hand-cards');
+      container.innerHTML = '';
+
+      myHand.forEach((card, index) => {
+        const el = document.createElement('div');
+        const isRed = card.suit === '♥' || card.suit === '♦' || card.rank === '大王';
+        el.className = `poker-card ${isRed ? 'red' : ''} ${selectedIndices.has(index) ? 'selected' : ''}`;
+        el.innerText = card.label;
+        el.onclick = () => toggleSelectCard(index);
+        container.appendChild(el);
+      });
+    }
+
+    function toggleSelectCard(index) {
+      if (selectedIndices.has(index)) {
+        selectedIndices.delete(index);
+      } else {
+        selectedIndices.add(index);
+      }
+      renderHandUI();
+    }
+
+    function clearSelection() {
+      selectedIndices.clear();
+      renderHandUI();
+    }
+
+    // 出牌处理
+    function playSelectedCards() {
+      if (selectedIndices.size === 0) return alert('请先选择要出的牌！');
+
+      const selectedCards = Array.from(selectedIndices).map(i => myHand[i]);
+      const cardType = parseHandType(selectedCards);
+
+      if (!cardType) {
+        return alert('不合法的牌型组合！请重新选择。');
+      }
+
+      // 出牌逻辑：广播给全房间
+      const cardLabels = selectedCards.map(c => c.label).join(' ');
+      socket.emit('play_cards', {
+        roomId: activeRoomId,
+        cards: `${cardLabels} 【${cardType.type}】`
+      });
+
+      // 从本地手牌移除
+      myHand = myHand.filter((_, idx) => !selectedIndices.has(idx));
+      selectedIndices.clear();
+      renderHandUI();
+    }
+
     function claimWin() {
       socket.emit('game_over', { roomId: activeRoomId, winnerUsername: currentUser.username });
     }
 
-    // --- Socket 监听 ---
+    // --- 4. Socket 广播监听 ---
     socket.on('room_created', ({ roomId, room }) => {
       openRoomView(roomId, room);
     });
@@ -121,12 +318,13 @@
       updateRoomUI(room);
     });
 
+    // 人员满3人自动开局触发
     socket.on('game_start', ({ message, room }) => {
       alert(message);
       updateRoomUI(room);
+      dealRandomHand(); // 自动生成手牌并自动理牌
     });
 
-    // 实时接收出牌广播
     socket.on('cards_played', (data) => {
       const board = document.getElementById('action-board');
       if (board.children[0] && board.children[0].style.color) {
@@ -139,19 +337,13 @@
       board.scrollTop = board.scrollHeight;
     });
 
-    // 接收游戏结算广播并更新本地金币显示
     socket.on('game_result', (data) => {
       alert(data.message);
-      if (data.winner === currentUser.username) {
-        currentUser.coins = data.newBalance;
-        document.getElementById('display-coins').innerText = data.newBalance;
-      }
       window.location.reload();
     });
 
     socket.on('error_message', (msg) => alert(msg));
 
-    // UI 辅助函数
     function openRoomView(roomId, room) {
       activeRoomId = roomId;
       document.getElementById('lobby-view').classList.add('hidden');
