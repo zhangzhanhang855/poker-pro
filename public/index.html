@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fight the Landlord (斗地主) - Real-time Room</title>
+  <title>斗地主 - 多端实时同步</title>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 16px; }
     .card { background: #1e293b; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; color: #38bdf8; }
+    .user-info { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 16px; text-align: center; }
     input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 1rem; }
     button { width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 6px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
     .btn-primary { background: #0284c7; color: #fff; }
     .btn-primary:hover { background: #0369a1; }
     .btn-success { background: #16a34a; color: #fff; }
     .btn-success:hover { background: #15803d; }
-    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-warning { background: #eab308; color: #000; }
     .hidden { display: none; }
     ul { list-style: none; padding: 0; }
     li { background: #334155; margin-bottom: 6px; padding: 8px 12px; border-radius: 4px; display: flex; justify-content: space-between; }
@@ -27,51 +28,78 @@
 <body>
 
   <div class="card">
-    <h1>JR AI Landlord Multi-Sync</h1>
+    <h1>JR AI 斗地主同步大厅</h1>
 
-    <!-- Lobby View -->
-    <div id="lobby-view">
-      <input type="text" id="username" placeholder="Your Username" />
-      <input type="text" id="roomId" placeholder="Room ID" />
-      <button class="btn-primary" onclick="createRoom()">Create Room</button>
-      <button class="btn-success" onclick="joinRoom()">Join Room</button>
+    <div id="login-view">
+      <input type="text" id="username-input" placeholder="输入您的用户名" />
+      <button class="btn-primary" onclick="login()">进入游戏</button>
     </div>
 
-    <!-- Room View -->
+    <div id="lobby-view" class="hidden">
+      <div class="user-info">
+        玩家: <strong id="display-name">-</strong> | 🪙 金币: <strong id="display-coins" style="color:#facc15;">0</strong>
+      </div>
+      <input type="text" id="roomId" placeholder="输入房间号" />
+      <button class="btn-primary" onclick="createRoom()">创建房间</button>
+      <button class="btn-success" onclick="joinRoom()">加入房间</button>
+    </div>
+
     <div id="room-view" class="hidden">
-      <h3>Room Code: <span id="room-code-display" style="color: #38bdf8;"></span></h3>
-      <h4>Players (<span id="player-count">0</span>/3)</h4>
+      <h3>房间号: <span id="room-code-display" style="color: #38bdf8;"></span></h3>
+      <h4>玩家列表 (<span id="player-count">0</span>/3)</h4>
       <ul id="player-list"></ul>
 
-      <h4>Table Actions</h4>
+      <h4>桌面实时出牌广播</h4>
       <div id="action-board" class="board">
-        <div style="color: #64748b;">Waiting for cards to be played...</div>
+        <div style="color: #64748b;">等待玩家出牌...</div>
       </div>
 
-      <input type="text" id="card-input" placeholder="Type played cards (e.g., 3 3 3 4)" />
-      <button class="btn-primary" onclick="playCards()">Play Cards</button>
-      <button class="btn-danger" onclick="finishGame()">End & Save to DB</button>
+      <input type="text" id="card-input" placeholder="输入要出的牌 (例: 3 3 3 4)" />
+      <button class="btn-primary" onclick="playCards()">确认出牌</button>
+      <button class="btn-warning" onclick="claimWin()">模拟获胜（赢得 300 金币）</button>
     </div>
   </div>
 
   <script>
     const socket = io();
+    let currentUser = null;
     let activeRoomId = null;
 
+    // 1. 用户登录/获取账户信息
+    async function login() {
+      const username = document.getElementById('username-input').value.trim();
+      if (!username) return alert('请输入用户名');
+
+      const res = await fetch('/api/user/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        currentUser = data.user;
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('lobby-view').classList.remove('hidden');
+        document.getElementById('display-name').innerText = currentUser.username;
+        document.getElementById('display-coins').innerText = currentUser.coins;
+      }
+    }
+
+    // 2. 房间操作
     function createRoom() {
-      const username = document.getElementById('username').value.trim();
       const roomId = document.getElementById('roomId').value.trim();
-      if (!username || !roomId) return alert('Please enter both name and Room ID');
-      socket.emit('create_room', { roomId, username });
+      if (!roomId) return alert('请输入房间号');
+      socket.emit('create_room', { roomId, username: currentUser.username });
     }
 
     function joinRoom() {
-      const username = document.getElementById('username').value.trim();
       const roomId = document.getElementById('roomId').value.trim();
-      if (!username || !roomId) return alert('Please enter both name and Room ID');
-      socket.emit('join_room', { roomId, username });
+      if (!roomId) return alert('请输入房间号');
+      socket.emit('join_room', { roomId, username: currentUser.username });
     }
 
+    // 3. 实时出牌
     function playCards() {
       const cards = document.getElementById('card-input').value.trim();
       if (!cards) return;
@@ -79,13 +107,12 @@
       document.getElementById('card-input').value = '';
     }
 
-    function finishGame() {
-      if (confirm('Save session logs to MongoDB Atlas and exit?')) {
-        socket.emit('finish_game', { roomId: activeRoomId });
-      }
+    // 4. 模拟赢局并结算 300 金币
+    function claimWin() {
+      socket.emit('game_over', { roomId: activeRoomId, winnerUsername: currentUser.username });
     }
 
-    // --- Socket Listeners ---
+    // --- Socket 监听 ---
     socket.on('room_created', ({ roomId, room }) => {
       openRoomView(roomId, room);
     });
@@ -99,26 +126,32 @@
       updateRoomUI(room);
     });
 
-    socket.on('cards_played', (log) => {
+    // 实时接收出牌广播
+    socket.on('cards_played', (data) => {
       const board = document.getElementById('action-board');
       if (board.children[0] && board.children[0].style.color) {
         board.innerHTML = '';
       }
       const item = document.createElement('div');
       item.className = 'log-item';
-      item.innerHTML = `<strong>${log.username}</strong> played: <span style="color:#facc15;">${log.cards}</span> <small>(${log.timestamp})</small>`;
+      item.innerHTML = `<strong>${data.username}</strong> 出牌: <span style="color:#facc15;">${data.cards}</span> <small>(${data.timestamp})</small>`;
       board.appendChild(item);
       board.scrollTop = board.scrollHeight;
     });
 
-    socket.on('game_ended', ({ message }) => {
-      alert(message);
+    // 接收游戏结算广播并更新本地金币显示
+    socket.on('game_result', (data) => {
+      alert(data.message);
+      if (data.winner === currentUser.username) {
+        currentUser.coins = data.newBalance;
+        document.getElementById('display-coins').innerText = data.newBalance;
+      }
       window.location.reload();
     });
 
     socket.on('error_message', (msg) => alert(msg));
 
-    // UI Helpers
+    // UI 辅助函数
     function openRoomView(roomId, room) {
       activeRoomId = roomId;
       document.getElementById('lobby-view').classList.add('hidden');
@@ -131,7 +164,7 @@
       document.getElementById('player-count').innerText = room.players.length;
       const list = document.getElementById('player-list');
       list.innerHTML = room.players
-        .map(p => `<li><span>${p.username}</span> <span>Pos: ${p.position}</span></li>`)
+        .map(p => `<li><span>${p.username}</span> <span>🪙 ${p.coins} 金币</span></li>`)
         .join('');
     }
   </script>
