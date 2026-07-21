@@ -8,33 +8,27 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
-});
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 1. 连接 MongoDB Atlas ---
+// MongoDB Atlas
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/landlord_db";
-
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ MongoDB Atlas 连接成功！'))
   .catch(err => console.error('❌ MongoDB Atlas 连接失败:', err));
 
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
-  coins: { type: Number, default: 1000 },
-  createdAt: { type: Date, default: Date.now }
+  coins: { type: Number, default: 1000 }
 });
-
 const User = mongoose.model('User', UserSchema);
 
 app.post('/api/user/login', async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: '请输入用户名' });
-
   try {
     let user = await User.findOne({ username });
     if (!user) {
@@ -47,127 +41,115 @@ app.post('/api/user/login', async (req, res) => {
   }
 });
 
-// --- 2. 内存房间管理（带回合控制）---
 const rooms = {};
 
 io.on('connection', (socket) => {
-  console.log(`[Socket] 客户端连接: ${socket.id}`);
-
-  // 创建房间
   socket.on('create_room', async ({ roomId, username }) => {
-    if (rooms[roomId]) {
-      return socket.emit('error_message', '房间号已存在！');
-    }
-
+    if (rooms[roomId]) return socket.emit('error_message', '房间号已存在！');
     const user = await User.findOne({ username });
-    const coins = user ? user.coins : 0;
 
     rooms[roomId] = {
       id: roomId,
-      players: [{ id: socket.id, username, coins, position: 0 }],
+      players: [{ id: socket.id, username, coins: user ? user.coins : 0, position: 0 }],
       status: 'waiting',
-      turnIndex: 0 // 记录当前轮到的玩家位置索引 (0 或 1)
+      turnIndex: 0,
+      lastPlayedHand: null, // 保存桌面上待压过的牌 { playerId, username, type, value, length, cardsText }
+      passCount: 0          // 记录连续 Pass 的次数
     };
 
     socket.join(roomId);
     socket.emit('room_created', { roomId, room: rooms[roomId] });
   });
 
-  // 加入房间
   socket.on('join_room', async ({ roomId, username }) => {
     const room = rooms[roomId];
-
-    if (!room) {
-      return socket.emit('error_message', '房间不存在！');
-    }
-    if (room.players.length >= 2) {
-      return socket.emit('error_message', '房间已满（上限2人）！');
-    }
+    if (!room) return socket.emit('error_message', '房间不存在！');
+    if (room.players.length >= 2) return socket.emit('error_message', '房间已满！');
 
     const user = await User.findOne({ username });
-    const coins = user ? user.coins : 0;
-
     const position = room.players.length;
-    room.players.push({ id: socket.id, username, coins, position });
+    room.players.push({ id: socket.id, username, coins: user ? user.coins : 0, position });
     socket.join(roomId);
 
     io.to(roomId).emit('room_updated', room);
 
-    // 满 2 人开启游戏并随机指定谁先出
     if (room.players.length === 2) {
       room.status = 'playing';
-      // 随机决定谁先出牌 (0 或 1)
       room.turnIndex = Math.floor(Math.random() * 2);
       const firstPlayer = room.players[room.turnIndex];
 
       io.to(roomId).emit('game_start', {
-        message: `对局开始！随机指定玩家【${firstPlayer.username}】先出牌！`,
+        message: `对局开始！【${firstPlayer.username}】先出牌！`,
         room,
         currentTurnSocketId: firstPlayer.id
       });
     }
   });
 
-  // 玩家出牌事件（加入回合安全锁）
-  socket.on('play_cards', ({ roomId, cards }) => {
+  // 出牌事件 (带比牌逻辑)
+  socket.on('play_cards', ({ roomId, handInfo }) => {
     const room = rooms[roomId];
     if (!room) return;
 
     const currentTurnPlayer = room.players[room.turnIndex];
-    
-    // 【安全检查】如果不是当前回合玩家发起的，拒绝请求！
     if (currentTurnPlayer.id !== socket.id) {
       return socket.emit('error_message', '还没轮到你出牌！');
     }
 
-    const playData = {
+    // 更新房间桌面上最大的牌
+    room.lastPlayedHand = {
       playerId: socket.id,
       username: currentTurnPlayer.username,
-      cards,
-      timestamp: new Date().toLocaleTimeString()
+      type: handInfo.type,
+      value: handInfo.value,
+      length: handInfo.length,
+      cardsText: handInfo.cardsText
     };
+    room.passCount = 0; // 重置 pass 次数
 
-    // 广播刚出的牌
-    io.to(roomId).emit('cards_played', playData);
+    io.to(roomId).emit('cards_played', room.lastPlayedHand);
 
-    // 【核心修复】将回合切换给对方 (0 -> 1, 1 -> 0)
+    // 切换回合
     room.turnIndex = (room.turnIndex + 1) % 2;
     const nextPlayer = room.players[room.turnIndex];
 
     io.to(roomId).emit('turn_changed', {
       currentTurnSocketId: nextPlayer.id,
-      username: nextPlayer.username
+      username: nextPlayer.username,
+      lastPlayedHand: room.lastPlayedHand
     });
   });
 
-  // 玩家选择“不出” Pass
+  // 不出 Pass 事件
   socket.on('pass_turn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room) return;
 
     const currentTurnPlayer = room.players[room.turnIndex];
-    if (currentTurnPlayer.id !== socket.id) {
-      return socket.emit('error_message', '还没轮到你操作！');
+    if (currentTurnPlayer.id !== socket.id) return socket.emit('error_message', '还没轮到你操作！');
+
+    room.passCount++;
+    // 如果对方不出，清空桌面压牌，获得自由出牌权
+    if (room.passCount >= 1) {
+      room.lastPlayedHand = null;
     }
 
     io.to(roomId).emit('cards_played', {
       playerId: socket.id,
       username: currentTurnPlayer.username,
-      cards: '要不起 / 不出',
-      timestamp: new Date().toLocaleTimeString()
+      cardsText: '要不起 / 不出'
     });
 
-    // 切换回合给对方
     room.turnIndex = (room.turnIndex + 1) % 2;
     const nextPlayer = room.players[room.turnIndex];
 
     io.to(roomId).emit('turn_changed', {
       currentTurnSocketId: nextPlayer.id,
-      username: nextPlayer.username
+      username: nextPlayer.username,
+      lastPlayedHand: room.lastPlayedHand
     });
   });
 
-  // 游戏结算
   socket.on('game_over', async ({ roomId, winnerUsername }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -182,31 +164,11 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('game_result', {
         winner: winnerUsername,
         reward: 300,
-        newBalance: updatedUser ? updatedUser.coins : null,
-        message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！获得 300 金币！`
+        message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！加成 300 金币！`
       });
-
       delete rooms[roomId];
     } catch (err) {
-      console.error('更新资产失败:', err);
-    }
-  });
-
-  // 断开连接处理
-  socket.on('disconnect', () => {
-    for (const roomId in rooms) {
-      const room = rooms[roomId];
-      const index = room.players.findIndex(p => p.id === socket.id);
-
-      if (index !== -1) {
-        room.players.splice(index, 1);
-        if (room.players.length === 0) {
-          delete rooms[roomId];
-        } else {
-          io.to(roomId).emit('room_updated', room);
-        }
-        break;
-      }
+      console.error(err);
     }
   });
 });
