@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Landlord Master - 实时竞技斗地主</title>
+  <title>Landlord Master - 像素风格版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
-      --bg-gradient: radial-gradient(circle at 50% 20%, #1a2639 0%, #0b111e 100%);
-      --card-bg: rgba(22, 33, 54, 0.75);
-      --card-border: rgba(255, 255, 255, 0.1);
+      --bg-gradient: radial-gradient(circle at 50% 30%, #1a1528 0%, #0a0710 100%);
+      --card-bg: rgba(26, 21, 40, 0.85);
+      --card-border: rgba(255, 255, 255, 0.12);
       --accent-gold: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
       --accent-cyan: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
       --accent-blue: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
@@ -17,7 +17,7 @@
       --text-sub: #94a3b8;
     }
 
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
+    * { box-sizing: border-box; font-family: 'Courier New', Courier, monospace, sans-serif; margin: 0; padding: 0; }
     body { background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
     
     .glass-panel {
@@ -28,13 +28,13 @@
       border-radius: 20px;
       padding: 32px;
       width: 100%;
-      max-width: 680px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      max-width: 800px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     }
 
-    .header { text-align: center; margin-bottom: 28px; }
-    .header h1 { font-size: 2rem; background: var(--accent-gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; letter-spacing: 1px; }
-    .header p { color: var(--text-sub); font-size: 0.9rem; margin-top: 6px; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { font-size: 2.2rem; background: var(--accent-gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; letter-spacing: 2px; }
+    .header p { color: var(--text-sub); font-size: 0.85rem; margin-top: 6px; }
 
     .user-badge {
       background: rgba(255,255,255,0.05);
@@ -44,7 +44,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .user-badge .coins { color: #facc15; font-weight: 700; font-size: 1.1rem; }
 
@@ -58,21 +58,19 @@
       color: #fff;
       font-size: 1rem;
       outline: none;
-      transition: all 0.3s;
     }
-    input:focus { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.3); }
 
     .btn {
-      padding: 14px 20px;
+      padding: 12px 18px;
       border-radius: 10px;
       border: none;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.25s ease;
+      transition: all 0.2s ease;
       color: #fff;
     }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
     .btn-gold { background: var(--accent-gold); color: #000; }
     .btn-cyan { background: var(--accent-cyan); color: #000; }
     .btn-blue { background: var(--accent-blue); }
@@ -80,66 +78,34 @@
 
     .hidden { display: none !important; }
 
-    /* 玩家列表 Grid */
-    .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-    .player-card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 12px;
-      text-align: center;
-    }
-    .player-card .name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
-    .player-card .coins { font-size: 0.85rem; color: #facc15; }
+    .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .player-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px; text-align: center; }
 
-    /* 桌面面板 */
     .table-board {
-      background: rgba(0,0,0,0.3);
+      background: rgba(0,0,0,0.4);
       border: 1px dashed rgba(255,255,255,0.15);
       border-radius: 12px;
-      min-height: 120px;
-      max-height: 180px;
-      overflow-y: auto;
-      padding: 16px;
-      margin-bottom: 20px;
-    }
-    .log-item { margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
-    .log-item strong { color: #38bdf8; }
-    .log-item .cards { color: #facc15; font-weight: 700; margin-left: 6px; }
-
-    /* 手牌容器 */
-    .hand-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      background: rgba(0,0,0,0.2);
-      border-radius: 16px;
-      padding: 16px;
       min-height: 100px;
-      margin-bottom: 20px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 12px;
+      margin-bottom: 16px;
     }
+    .log-item { margin-bottom: 6px; font-size: 0.85rem; }
 
-    /* 扑克牌高级样式 */
-    .poker-card {
-      width: 48px;
-      height: 72px;
-      background: #ffffff;
-      color: #1e293b;
-      border-radius: 8px;
+    /* ===== Canvas 像素手牌渲染容器 ===== */
+    .hand-canvas-wrapper {
+      background: rgba(10, 7, 16, 0.6);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px 10px;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-weight: 800;
-      font-size: 1.15rem;
-      cursor: pointer;
-      user-select: none;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      margin-bottom: 20px;
+      overflow-x: auto;
     }
-    .poker-card.red { color: #e11d48; }
-    .poker-card.selected { transform: translateY(-16px); box-shadow: 0 0 16px #38bdf8; border: 2px solid #38bdf8; }
+    canvas { cursor: pointer; }
 
     .action-group { display: flex; justify-content: space-between; gap: 10px; }
   </style>
@@ -149,30 +115,33 @@
   <div class="glass-panel">
     <div class="header">
       <h1>LANDLORD MASTER</h1>
-      <p>实时云端同步 · MongoDB 资产安全保障</p>
+      <p>CANVAS 像素质感卡牌渲染引擎</p>
     </div>
 
+    <!-- 1. 登录界面 -->
     <div id="login-view">
-      <input type="text" id="username-input" placeholder="输入账户名称 / 手机号" />
+      <input type="text" id="username-input" placeholder="输入玩家账号" />
       <button class="btn btn-gold" style="width:100%" onclick="login()">进入大厅</button>
     </div>
 
+    <!-- 2. 大厅界面 -->
     <div id="lobby-view" class="hidden">
       <div class="user-badge">
-        <span>当前玩家: <strong id="display-name">-</strong></span>
+        <span>玩家: <strong id="display-name">-</strong></span>
         <span class="coins">🪙 <span id="display-coins">0</span></span>
       </div>
-      <input type="text" id="roomId" placeholder="请输入/创建房间号 (例如: 8888)" />
+      <input type="text" id="roomId" placeholder="创建/加入房间号 (例: 888)" />
       <div style="display:flex; gap:10px;">
-        <button class="btn btn-blue" style="flex:1" onclick="createRoom()">创建新房间</button>
+        <button class="btn btn-blue" style="flex:1" onclick="createRoom()">创建房间</button>
         <button class="btn btn-cyan" style="flex:1" onclick="joinRoom()">加入房间</button>
       </div>
     </div>
 
+    <!-- 3. 游戏房间界面 -->
     <div id="room-view" class="hidden">
       <div class="user-badge">
-        <span>房间号: <strong id="room-code-display" style="color:#38bdf8;"></strong></span>
-        <span>在线人数: <strong id="player-count">0</strong>/3</span>
+        <span>房间: <strong id="room-code-display" style="color:#38bdf8;"></strong></span>
+        <span>人数: <strong id="player-count">0</strong>/3</span>
       </div>
 
       <div class="player-grid" id="player-grid"></div>
@@ -181,8 +150,9 @@
         <div style="color: var(--text-sub); text-align:center;">等待对局开始...</div>
       </div>
 
-      <div id="hand-cards" class="hand-container">
-        <div style="color: var(--text-sub);">等待发牌...</div>
+      <!-- 单一 Canvas 绘制全部手牌及交互 -->
+      <div class="hand-canvas-wrapper">
+        <canvas id="hand-canvas" width="720" height="150"></canvas>
       </div>
 
       <div class="action-group">
@@ -192,7 +162,7 @@
         </div>
         <div>
           <button class="btn btn-blue" onclick="playSelectedCards()">确认出牌</button>
-          <button class="btn btn-gold" onclick="claimWin()">结算获胜 (+300)</button>
+          <button class="btn btn-gold" onclick="claimWin()">模拟胜利 (+300)</button>
         </div>
       </div>
     </div>
@@ -210,27 +180,164 @@
       'J':11, 'Q':12, 'K':13, 'A':14, '2':15, '小王':16, '大王':17
     };
 
+    // --- Canvas 像素卡牌绘制引擎 ---
+    const canvas = document.getElementById('hand-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // 绘制像素扫描线纹理
+    function drawScanlines(ctx, width, height) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.06)';
+      for (let y = 0; y < height; y += 3) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+    }
+
+    // Canvas 绘制单张像素卡牌
+    function drawPixelCard(card, x, y, width, height, isSelected, rotationAngle) {
+      ctx.save();
+      ctx.translate(x + width / 2, y + height / 2);
+      ctx.rotate((rotationAngle * Math.PI) / 180); // 错落微倾斜角度
+
+      const drawY = isSelected ? -18 : 0; // 选中弹起动画
+
+      // 1. 卡牌阴影
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 6;
+
+      // 2. 白色圆角牌面主体
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.roundRect(-width / 2, -height / 2 + drawY, width, height, 8);
+      ctx.fill();
+
+      // 清除阴影影响后续内部绘制
+      ctx.shadowColor = 'transparent';
+
+      // 3. 边框 (选中显示高亮蓝边)
+      ctx.lineWidth = isSelected ? 3 : 1;
+      ctx.strokeStyle = isSelected ? '#38bdf8' : '#cbd5e1';
+      ctx.stroke();
+
+      // 4. 扫描线纹理
+      ctx.save();
+      ctx.clip(); // 限制在牌面内
+      drawScanlines(ctx, width, height);
+      ctx.restore();
+
+      // 5. 判断颜色 (红色/黑灰色)
+      const isRed = card.suit === '♥' || card.suit === '♦' || card.rank === '大王';
+      const textColor = isRed ? '#dc2626' : '#1e293b';
+
+      // 6. 绘制点阵文字 (Rank)
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 16px "Courier New", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(card.rank, -width / 2 + 6, -height / 2 + drawY + 20);
+
+      // 颠倒小字（右下角）
+      ctx.save();
+      ctx.translate(width / 2 - 6, height / 2 + drawY - 8);
+      ctx.rotate(Math.PI);
+      ctx.fillText(card.rank, 0, 0);
+      ctx.restore();
+
+      // 7. 绘制像素花色 (Suit)
+      ctx.font = '24px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      const suitSymbol = card.suit || (card.rank === '大王' ? '★' : '☆');
+      ctx.fillText(suitSymbol, 0, drawY + 8);
+
+      ctx.restore();
+    }
+
+    // 重新渲染 Canvas 上的所有手牌
+    function renderHandCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (myHand.length === 0) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('等待发牌...', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      const cardWidth = 64;
+      const cardHeight = 96;
+      const totalCards = myHand.length;
+      
+      // 动态重叠卡牌间距计算
+      const overlap = Math.min(32, (canvas.width - 60) / totalCards);
+      const startX = (canvas.width - (cardWidth + (totalCards - 1) * overlap)) / 2;
+      const startY = 25;
+
+      myHand.forEach((card, i) => {
+        const x = startX + i * overlap;
+        const isSelected = selectedIndices.has(i);
+        // 生成每张牌固定微小的错落倾斜角 (如 -2.5度 到 +2.5度)
+        const rotationAngle = card.rotAngle || ((i % 5) - 2) * 1.2;
+        card.rotAngle = rotationAngle;
+        card.renderX = x;
+        card.renderY = startY;
+
+        drawPixelCard(card, x, startY, cardWidth, cardHeight, isSelected, rotationAngle);
+      });
+    }
+
+    // Canvas 点击交互检测
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const cardWidth = 64;
+      const cardHeight = 96;
+      const overlap = Math.min(32, (canvas.width - 60) / myHand.length);
+
+      // 从后往前检测（点在最上面的牌优先响应）
+      for (let i = myHand.length - 1; i >= 0; i--) {
+        const card = myHand[i];
+        if (!card.renderX) continue;
+
+        const isLast = i === myHand.length - 1;
+        const visibleWidth = isLast ? cardWidth : overlap;
+
+        if (
+          clickX >= card.renderX &&
+          clickX <= card.renderX + visibleWidth &&
+          clickY >= card.renderY - 20 &&
+          clickY <= card.renderY + cardHeight
+        ) {
+          if (selectedIndices.has(i)) {
+            selectedIndices.delete(i);
+          } else {
+            selectedIndices.add(i);
+          }
+          renderHandCanvas();
+          break;
+        }
+      }
+    });
+
+    // --- 业务与网络通信逻辑 ---
     async function login() {
       const username = document.getElementById('username-input').value.trim();
       if (!username) return alert('请输入用户名');
 
-      try {
-        const res = await fetch('/api/user/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username })
-        });
-        const data = await res.json();
+      const res = await fetch('/api/user/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
 
-        if (data.success) {
-          currentUser = data.user;
-          document.getElementById('login-view').classList.add('hidden');
-          document.getElementById('lobby-view').classList.remove('hidden');
-          document.getElementById('display-name').innerText = currentUser.username;
-          document.getElementById('display-coins').innerText = currentUser.coins;
-        }
-      } catch (e) {
-        alert("登录失败，请确认后端服务器正常运行！");
+      if (data.success) {
+        currentUser = data.user;
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('lobby-view').classList.remove('hidden');
+        document.getElementById('display-name').innerText = currentUser.username;
+        document.getElementById('display-coins').innerText = currentUser.coins;
       }
     }
 
@@ -246,7 +353,6 @@
       socket.emit('join_room', { roomId, username: currentUser.username });
     }
 
-    // 斗地主牌型识别算法
     function parseHandType(cards) {
       if (!cards || cards.length === 0) return null;
       const sorted = [...cards].sort((a, b) => a.value - b.value);
@@ -255,7 +361,6 @@
       const counts = {};
       values.forEach(v => counts[v] = (counts[v] || 0) + 1);
       const countValues = Object.values(counts);
-      const uniqueKeys = Object.keys(counts).map(Number).sort((a,b)=>a-b);
 
       if (len === 2 && values[0] === 16 && values[1] === 17) return { type: '王炸' };
       if (len === 1) return { type: '单张' };
@@ -265,7 +370,6 @@
       if (len === 4 && countValues.includes(3) && countValues.includes(1)) return { type: '三带一' };
       if (len === 5 && countValues.includes(3) && countValues.includes(2)) return { type: '三带二' };
       if (len >= 5 && countValues.every(c => c === 1) && values[len-1] < 15 && (values[len-1] - values[0] === len - 1)) return { type: '顺子' };
-      if (len >= 6 && len % 2 === 0 && countValues.every(c => c === 2) && values[len-1] < 15 && (uniqueKeys[uniqueKeys.length-1] - uniqueKeys[0] === uniqueKeys.length - 1)) return { type: '连对' };
 
       return null;
     }
@@ -274,9 +378,9 @@
       const suits = ['♠', '♥', '♣', '♦'];
       const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
       const deck = [];
-      ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r], label: s + r })));
-      deck.push({ rank: '小王', suit: '', value: 16, label: '小王' });
-      deck.push({ rank: '大王', suit: '', value: 17, label: '大王' });
+      ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
+      deck.push({ rank: '小王', suit: '', value: 16 });
+      deck.push({ rank: '大王', suit: '', value: 17 });
       return deck;
     }
 
@@ -293,28 +397,12 @@
     function sortHandCards() {
       myHand.sort((a, b) => b.value - a.value);
       selectedIndices.clear();
-      renderHandUI();
-    }
-
-    function renderHandUI() {
-      const container = document.getElementById('hand-cards');
-      container.innerHTML = '';
-      myHand.forEach((card, index) => {
-        const el = document.createElement('div');
-        const isRed = card.suit === '♥' || card.suit === '♦' || card.rank === '大王';
-        el.className = `poker-card ${isRed ? 'red' : ''} ${selectedIndices.has(index) ? 'selected' : ''}`;
-        el.innerText = card.label;
-        el.onclick = () => {
-          selectedIndices.has(index) ? selectedIndices.delete(index) : selectedIndices.add(index);
-          renderHandUI();
-        };
-        container.appendChild(el);
-      });
+      renderHandCanvas();
     }
 
     function clearSelection() {
       selectedIndices.clear();
-      renderHandUI();
+      renderHandCanvas();
     }
 
     function playSelectedCards() {
@@ -324,7 +412,7 @@
 
       if (!cardType) return alert('非法的出牌组合');
 
-      const cardLabels = selectedCards.map(c => c.label).join(' ');
+      const cardLabels = selectedCards.map(c => (c.suit || '') + c.rank).join(' ');
       socket.emit('play_cards', {
         roomId: activeRoomId,
         cards: `${cardLabels} [${cardType.type}]`
@@ -332,14 +420,13 @@
 
       myHand = myHand.filter((_, idx) => !selectedIndices.has(idx));
       selectedIndices.clear();
-      renderHandUI();
+      renderHandCanvas();
     }
 
     function claimWin() {
       socket.emit('game_over', { roomId: activeRoomId, winnerUsername: currentUser.username });
     }
 
-    // Socket 响应监听
     socket.on('room_created', ({ roomId, room }) => openRoomView(roomId, room));
     socket.on('room_updated', (room) => updateRoomUI(room));
     socket.on('game_start', ({ message, room }) => {
@@ -353,7 +440,7 @@
       if (board.children[0] && board.children[0].style.textAlign === 'center') board.innerHTML = '';
       const item = document.createElement('div');
       item.className = 'log-item';
-      item.innerHTML = `<strong>${data.username}</strong>: <span class="cards">${data.cards}</span>`;
+      item.innerHTML = `<strong>${data.username}</strong> 出牌: <span style="color:#facc15;">${data.cards}</span>`;
       board.appendChild(item);
       board.scrollTop = board.scrollHeight;
     });
@@ -371,6 +458,7 @@
       document.getElementById('room-view').classList.remove('hidden');
       document.getElementById('room-code-display').innerText = roomId;
       updateRoomUI(room);
+      renderHandCanvas();
     }
 
     function updateRoomUI(room) {
@@ -378,8 +466,8 @@
       const grid = document.getElementById('player-grid');
       grid.innerHTML = room.players.map(p => `
         <div class="player-card">
-          <div class="name">${p.username}</div>
-          <div class="coins">🪙 ${p.coins}</div>
+          <div>${p.username}</div>
+          <div style="color:#facc15; font-size:0.85rem;">🪙 ${p.coins}</div>
         </div>
       `).join('');
     }
