@@ -1,7 +1,7 @@
 {
   "name": "landlord-game",
   "version": "1.0.0",
-  "description": "Real-time Landlord (斗地主) room game with Socket.IO and MongoDB Atlas",
+  "description": "Real-time Landlord room game with Socket.IO, Render, and MongoDB Atlas",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
