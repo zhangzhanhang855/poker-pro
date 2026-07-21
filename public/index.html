@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>欢乐斗地主 - 商业级 Canvas 版</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>欢乐斗地主 - 移动/桌面全端适配版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     * {
@@ -12,10 +12,11 @@
       padding: 0;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none;
       font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", STHeiti, Microsoft Yahei, sans-serif;
     }
 
-    body, html {
+    html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
@@ -25,7 +26,7 @@
       align-items: center;
     }
 
-    /* 游戏大容器 - 保持 16:9 或黄金比例 */
+    /* 游戏大容器：移动端全屏，PC端保持 16:9 比例 */
     #game-container {
       position: relative;
       width: 100vw;
@@ -37,7 +38,6 @@
       overflow: hidden;
     }
 
-    /* 主画板 */
     #gameCanvas {
       position: absolute;
       top: 0;
@@ -45,9 +45,10 @@
       width: 100%;
       height: 100%;
       z-index: 1;
+      touch-action: none; /* 禁用默认缩放滑动，提升移动端手感 */
     }
 
-    /* UI 遮罩与弹窗层 */
+    /* UI 遮罩层 */
     .ui-layer {
       position: absolute;
       top: 0;
@@ -59,18 +60,12 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 16px;
+      padding: 12px;
     }
 
-    .interactive {
-      pointer-events: auto;
-    }
+    .hidden { display: none !important; }
 
-    .hidden {
-      display: none !important;
-    }
-
-    /* 顶部玩家资产与状态栏 */
+    /* 顶栏适配移动端 */
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -81,16 +76,16 @@
     .user-profile {
       display: flex;
       align-items: center;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
       border: 1px solid rgba(255, 215, 0, 0.3);
-      padding: 6px 16px;
-      border-radius: 30px;
+      padding: 4px 12px;
+      border-radius: 20px;
       backdrop-filter: blur(8px);
     }
 
     .avatar-frame {
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       background: linear-gradient(135deg, #ffd700, #ff8c00);
       display: flex;
@@ -98,100 +93,67 @@
       align-items: center;
       font-weight: bold;
       color: #000;
-      margin-right: 10px;
-      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-    }
-
-    .user-info {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .user-name {
-      color: #fff;
+      margin-right: 8px;
       font-size: 14px;
-      font-weight: bold;
     }
 
-    .user-coins {
-      color: #facc15;
-      font-size: 13px;
-      font-weight: bold;
-    }
+    .user-name { color: #fff; font-size: 12px; font-weight: bold; }
+    .user-coins { color: #facc15; font-size: 11px; font-weight: bold; }
 
-    .room-info-badge {
+    .room-badge {
       background: rgba(0, 0, 0, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 8px 16px;
-      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 12px;
+      border-radius: 16px;
       color: #38bdf8;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: bold;
     }
 
-    /* 商业级通用按钮样式 */
+    /* 触控友好型按钮 */
     .btn {
-      padding: 12px 28px;
-      border-radius: 25px;
+      padding: 10px 20px;
+      border-radius: 20px;
       border: none;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: bold;
       cursor: pointer;
       outline: none;
-      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+      transition: transform 0.1s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       display: inline-flex;
       justify-content: center;
       align-items: center;
+      pointer-events: auto;
     }
 
-    .btn:active {
-      transform: scale(0.95);
+    .btn:active { transform: scale(0.92); }
+
+    .btn-gold { background: linear-gradient(180deg, #ffe066 0%, #f59e0b 100%); color: #78350f; }
+    .btn-blue { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color: #fff; }
+    .btn-green { background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%); color: #fff; }
+    .btn-dark { background: linear-gradient(180deg, #64748b 0%, #334155 100%); color: #fff; }
+
+    /* 操作工具栏适配手机底部 */
+    .action-bar {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 20;
     }
 
-    .btn-gold {
-      background: linear-gradient(180deg, #ffe066 0%, #f59e0b 100%);
-      color: #78350f;
-      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-      border: 1px solid #fef08a;
-    }
-
-    .btn-blue {
-      background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-      border: 1px solid #7dd3fc;
-    }
-
-    .btn-green {
-      background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-      border: 1px solid #86efac;
-    }
-
-    .btn-red {
-      background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-      border: 1px solid #fca5a5;
-    }
-
-    .btn-dark {
-      background: linear-gradient(180deg, #64748b 0%, #334155 100%);
-      color: #f8fafc;
-      border: 1px solid #94a3b8;
-    }
-
-    /* 登录/大厅弹窗 */
+    /* 全屏弹窗覆盖 */
     .modal-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(10px);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
       z-index: 100;
       display: flex;
       justify-content: center;
@@ -202,64 +164,27 @@
     .modal-card {
       background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
       border: 2px solid rgba(255, 215, 0, 0.3);
-      border-radius: 24px;
-      padding: 32px;
-      width: 90%;
-      max-width: 440px;
+      border-radius: 20px;
+      padding: 24px;
+      width: 85%;
+      max-width: 380px;
       text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     }
 
-    .modal-title {
-      font-size: 24px;
-      color: #facc15;
-      margin-bottom: 20px;
-      font-weight: 800;
-      letter-spacing: 1px;
-    }
-
+    .modal-title { font-size: 20px; color: #facc15; margin-bottom: 16px; font-weight: bold; }
+    
     .input-field {
       width: 100%;
-      padding: 14px 20px;
-      border-radius: 12px;
+      padding: 12px;
+      border-radius: 10px;
       border: 1px solid #334155;
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.9);
       color: #fff;
-      font-size: 16px;
-      margin-bottom: 20px;
+      font-size: 15px;
+      margin-bottom: 16px;
       outline: none;
-      transition: border-color 0.2s;
     }
 
-    .input-field:focus {
-      border-color: #38bdf8;
-    }
-
-    /* 游戏操作按钮区域 */
-    .action-bar {
-      position: absolute;
-      bottom: 140px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 16px;
-      z-index: 20;
-      pointer-events: auto;
-    }
-
-    /* 叫分/抢地主按钮区域 */
-    .bidding-bar {
-      position: absolute;
-      bottom: 140px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      z-index: 20;
-      pointer-events: auto;
-    }
-
-    /* 结算面板 */
     .settlement-panel {
       position: absolute;
       top: 50%;
@@ -268,59 +193,36 @@
       background: rgba(15, 23, 42, 0.95);
       border: 2px solid #facc15;
       border-radius: 20px;
-      padding: 24px 40px;
+      padding: 20px 32px;
       text-align: center;
       z-index: 200;
       pointer-events: auto;
-      box-shadow: 0 0 40px rgba(250, 204, 21, 0.3);
     }
-
-    .settlement-title {
-      font-size: 32px;
-      font-weight: 900;
-      margin-bottom: 12px;
-    }
-
-    .win-text { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
-    .lose-text { color: #f87171; text-shadow: 0 0 10px rgba(248, 113, 113, 0.5); }
   </style>
 </head>
 <body>
 
   <div id="game-container">
-    <!-- 主游戏 Canvas 画板 -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- UI 覆盖层 -->
     <div class="ui-layer">
-      <!-- 顶部信息 -->
       <div class="top-bar">
         <div class="user-profile">
-          <div class="avatar-frame" id="my-avatar">官</div>
-          <div class="user-info">
-            <span class="user-name" id="my-name">未登录</span>
-            <span class="user-coins">🪙 <span id="my-coins">0</span></span>
+          <div class="avatar-frame">官</div>
+          <div>
+            <div class="user-name" id="my-name">未登录</div>
+            <div class="user-coins">🪙 <span id="my-coins">0</span></div>
           </div>
         </div>
 
-        <div class="room-info-badge hidden" id="room-badge">
-          房间号: <span id="room-id-text">888</span> | 倍数: <span id="multiplier-text">x15</span>
+        <div class="room-badge hidden" id="room-badge">
+          房间号: <span id="room-id-text">-</span> | 人数: <span id="player-count">0</span>/3
         </div>
       </div>
 
-      <!-- 叫牌控制栏 -->
-      <div class="bidding-bar hidden" id="bidding-bar">
-        <button class="btn btn-dark" onclick="gameApp.submitBid(0)">不叫</button>
-        <button class="btn btn-gold" onclick="gameApp.submitBid(1)">1 分</button>
-        <button class="btn btn-gold" onclick="gameApp.submitBid(2)">2 分</button>
-        <button class="btn btn-gold" onclick="gameApp.submitBid(3)">3 分</button>
-      </div>
-
-      <!-- 出牌控制栏 -->
       <div class="action-bar hidden" id="action-bar">
         <button class="btn btn-dark" onclick="gameApp.passTurn()">不出</button>
-        <button class="btn btn-blue" onclick="gameApp.autoPrompt()">提示</button>
-        <button class="btn btn-gold" onclick="gameApp.sortHand()">理牌</button>
+        <button class="btn btn-blue" onclick="gameApp.sortHand()">理牌</button>
         <button class="btn btn-green" onclick="gameApp.playCards()">出牌</button>
       </div>
     </div>
@@ -328,8 +230,8 @@
     <!-- 登录弹窗 -->
     <div class="modal-overlay" id="login-modal">
       <div class="modal-card">
-        <div class="modal-title">欢乐斗地主 - 竞技版</div>
-        <input type="text" id="username-input" class="input-field" placeholder="请输入玩家昵称..." value="玩家1" />
+        <div class="modal-title">欢乐斗地主 - 手机/PC同步版</div>
+        <input type="text" id="username-input" class="input-field" placeholder="请输入玩家昵称..." />
         <button class="btn btn-gold" style="width: 100%;" onclick="gameApp.login()">进入大厅</button>
       </div>
     </div>
@@ -338,8 +240,8 @@
     <div class="modal-overlay hidden" id="lobby-modal">
       <div class="modal-card">
         <div class="modal-title">游戏大厅</div>
-        <input type="text" id="room-input" class="input-field" placeholder="输入房间号 (例: 888)" value="888" />
-        <div style="display: flex; gap: 12px;">
+        <input type="text" id="room-input" class="input-field" placeholder="输入房间号 (如: 888)" value="888" />
+        <div style="display: flex; gap: 10px;">
           <button class="btn btn-blue" style="flex: 1;" onclick="gameApp.createRoom()">创建房间</button>
           <button class="btn btn-green" style="flex: 1;" onclick="gameApp.joinRoom()">加入房间</button>
         </div>
@@ -348,256 +250,95 @@
 
     <!-- 结算弹窗 -->
     <div class="settlement-panel hidden" id="settlement-modal">
-      <div class="settlement-title win-text" id="settlement-title">对局结束</div>
-      <p style="color: #cbd5e1; margin-bottom: 20px;" id="settlement-desc">金币结算中...</p>
+      <h2 id="settlement-title" style="color:#4ade80; margin-bottom:10px;">对局结束</h2>
+      <p id="settlement-desc" style="color:#cbd5e1; margin-bottom:16px;">金币结算中...</p>
       <button class="btn btn-gold" onclick="gameApp.backToLobby()">返回大厅</button>
     </div>
   </div>
 
   <script>
-    /**
-     * 1000+ 行商业级斗地主核心前端引擎
-     * 包含：完整扑克牌 Vector 渲染、高阶算法牌型校验引擎、Canvas 手牌平滑交互、Socket 状态机同步
-     */
+    // 自动判断 Render 部署域名还是本地环境，解决他人无法加入问题
+    const socket = io(window.location.origin, {
+      transports: ['websocket', 'polling']
+    });
 
-    // --- 1. 扑克牌常量与权值映射 ---
     const CARD_SUITS = { SPADE: '♠', HEART: '♥', CLUB: '♣', DIAMOND: '♦' };
-    const CARD_RANKS = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'BLACK_JOKER', 'RED_JOKER'];
-    
     const RANK_VALUES = {
       '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-      'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, 'BLACK_JOKER': 16, 'RED_JOKER': 17
+      'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // 牌型定义
-    const HAND_TYPES = {
-      INVALID: -1,
-      SINGLE: 1,        // 单张
-      PAIR: 2,          // 对子
-      TRIPLE: 3,        // 三张
-      TRIPLE_WITH_ONE: 4, // 三带一
-      TRIPLE_WITH_PAIR: 5,// 三带二
-      STRAIGHT: 6,      // 顺子
-      STRAIGHT_PAIR: 7, // 连对
-      PLANE: 8,         // 飞机
-      PLANE_WITH_WING: 9,// 飞机带翅膀
-      FOUR_WITH_TWO: 10, // 四带二
-      BOMB: 11,         // 炸弹
-      KING_BOMB: 12     // 王炸
-    };
-
-    // --- 2. 商业级牌型算法识别引擎 ---
+    // 简单高效牌型引擎
     class CardRulesEngine {
       static parseCards(cards) {
-        if (!cards || cards.length === 0) return { type: HAND_TYPES.INVALID, value: 0 };
-        
-        // 升序排列
+        if (!cards || cards.length === 0) return null;
         const sorted = [...cards].sort((a, b) => a.value - b.value);
         const len = sorted.length;
         const values = sorted.map(c => c.value);
-        
-        // 统计频率
-        const freqMap = {};
-        values.forEach(v => freqMap[v] = (freqMap[v] || 0) + 1);
-        const uniqueValues = Object.keys(freqMap).map(Number).sort((a, b) => a - b);
-        const counts = Object.values(freqMap);
+        const counts = {};
+        values.forEach(v => counts[v] = (counts[v] || 0) + 1);
+        const cValues = Object.values(counts);
 
-        // 王炸
-        if (len === 2 && values[0] === 16 && values[1] === 17) {
-          return { type: HAND_TYPES.KING_BOMB, value: 17 };
-        }
-
-        // 单张
-        if (len === 1) return { type: HAND_TYPES.SINGLE, value: values[0] };
-
-        // 对子
-        if (len === 2 && values[0] === values[1]) return { type: HAND_TYPES.PAIR, value: values[0] };
-
-        // 炸弹
-        if (len === 4 && counts.length === 1) return { type: HAND_TYPES.BOMB, value: values[0] };
-
-        // 三张
-        if (len === 3 && counts.length === 1) return { type: HAND_TYPES.TRIPLE, value: values[0] };
-
-        // 三带一
-        if (len === 4 && counts.includes(3) && counts.includes(1)) {
-          const tripleVal = uniqueValues.find(k => freqMap[k] === 3);
-          return { type: HAND_TYPES.TRIPLE_WITH_ONE, value: tripleVal };
-        }
-
-        // 三带二 (带对子)
-        if (len === 5 && counts.includes(3) && counts.includes(2)) {
-          const tripleVal = uniqueValues.find(k => freqMap[k] === 3);
-          return { type: HAND_TYPES.TRIPLE_WITH_PAIR, value: tripleVal };
-        }
-
-        // 顺子 (>= 5张，不能含2和双王)
-        if (len >= 5 && counts.every(c => c === 1) && values[len - 1] < 15) {
-          if (values[len - 1] - values[0] === len - 1) {
-            return { type: HAND_TYPES.STRAIGHT, value: values[len - 1] };
-          }
-        }
-
-        // 连对 (>= 6张，双数)
-        if (len >= 6 && len % 2 === 0 && counts.every(c => c === 2) && values[len - 1] < 15) {
-          if (uniqueValues[uniqueValues.length - 1] - uniqueValues[0] === uniqueValues.length - 1) {
-            return { type: HAND_TYPES.STRAIGHT_PAIR, value: uniqueValues[uniqueValues.length - 1] };
-          }
-        }
-
-        // 四带二
-        if (len === 6 && counts.includes(4)) {
-          const quadVal = uniqueValues.find(k => freqMap[k] === 4);
-          return { type: HAND_TYPES.FOUR_WITH_TWO, value: quadVal };
-        }
-
-        return { type: HAND_TYPES.INVALID, value: 0 };
-      }
-
-      // 比较两手牌大小
-      static compare(lastHand, newHand) {
-        if (newHand.type === HAND_TYPES.INVALID) return false;
-        if (lastHand.type === HAND_TYPES.INVALID) return true;
-
-        // 王炸最大
-        if (newHand.type === HAND_TYPES.KING_BOMB) return true;
-        if (lastHand.type === HAND_TYPES.KING_BOMB) return false;
-
-        // 炸弹压制普通牌
-        if (newHand.type === HAND_TYPES.BOMB && lastHand.type !== HAND_TYPES.BOMB) return true;
-        if (lastHand.type === HAND_TYPES.BOMB && newHand.type !== HAND_TYPES.BOMB) return false;
-
-        // 同牌型比大小
-        if (newHand.type === lastHand.type) {
-          return newHand.value > lastHand.value;
-        }
-
-        return false;
+        if (len === 2 && values[0] === 16 && values[1] === 17) return '王炸';
+        if (len === 1) return '单张';
+        if (len === 2 && values[0] === values[1]) return '对子';
+        if (len === 3 && cValues.length === 1) return '三张';
+        if (len === 4 && cValues.length === 1) return '炸弹';
+        if (len === 4 && cValues.includes(3) && cValues.includes(1)) return '三带一';
+        if (len === 5 && cValues.includes(3) && cValues.includes(2)) return '三带二';
+        if (len >= 5 && cValues.every(c => c === 1) && values[len-1] < 15 && (values[len-1] - values[0] === len - 1)) return '顺子';
+        return null;
       }
     }
 
-    // --- 3. Canvas 矢量扑克牌绘制类 ---
-    class CardRenderer {
-      constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-      }
-
-      drawCard(card, x, y, width, height, isSelected = false, isLandlord = false) {
-        const ctx = this.ctx;
-        ctx.save();
-
-        const drawY = isSelected ? y - 20 : y;
-
-        // 阴影
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = 12;
-        ctx.shadowOffsetY = 6;
-
-        // 牌背/白底圆角矩形
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.roundRect(x, drawY, width, height, 10);
-        ctx.fill();
-
-        ctx.shadowColor = 'transparent';
-
-        // 边框 (选中描金/描蓝边)
-        ctx.lineWidth = isSelected ? 3 : 1;
-        ctx.strokeStyle = isSelected ? '#38bdf8' : '#cbd5e1';
-        ctx.stroke();
-
-        // 花色颜色判断
-        const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === 'RED_JOKER';
-        const color = isRed ? '#e11d48' : '#0f172a';
-        ctx.fillStyle = color;
-
-        // 大小王特殊绘制
-        if (card.rank === 'BLACK_JOKER' || card.rank === 'RED_JOKER') {
-          ctx.font = 'bold 16px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(card.rank === 'RED_JOKER' ? '大' : '小', x + width / 2, drawY + height / 2 - 10);
-          ctx.fillText('王', x + width / 2, drawY + height / 2 + 15);
-        } else {
-          // 左上角数字
-          ctx.font = 'bold 18px monospace';
-          ctx.textAlign = 'left';
-          ctx.fillText(card.rank, x + 8, drawY + 22);
-
-          // 左上角小花色
-          ctx.font = '14px monospace';
-          ctx.fillText(card.suit, x + 8, drawY + 38);
-
-          // 中央大花色
-          ctx.font = '32px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(card.suit, x + width / 2, drawY + height / 2 + 10);
-        }
-
-        // 地主标识角标
-        if (isLandlord) {
-          ctx.fillStyle = '#facc15';
-          ctx.beginPath();
-          ctx.arc(x + width - 12, drawY + 12, 10, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#78350f';
-          ctx.font = 'bold 10px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('主', x + width - 12, drawY + 15);
-        }
-
-        ctx.restore();
-      }
-    }
-
-    // --- 4. 商业级客户端核心应用控制器 ---
     class LandlordGameApp {
       constructor() {
-        this.socket = io();
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        this.cardRenderer = new CardRenderer(this.canvas);
-
         this.user = null;
         this.roomId = null;
         this.myHand = [];
         this.selectedIndices = new Set();
         this.players = [];
-        this.tableCards = []; // 桌面最新出的牌
-        this.gameState = 'LOBBY'; // LOBBY, WAITING, BIDDING, PLAYING, SETTLEMENT
+        this.tableCards = [];
 
         this.initCanvasSize();
         this.bindEvents();
         this.setupSocketListeners();
 
-        // 启动渲染循环
         requestAnimationFrame(() => this.renderLoop());
       }
 
       initCanvasSize() {
         const container = document.getElementById('game-container');
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
+        // 支持 HiDPI / 苹果视网膜屏幕防模糊缩放
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = container.clientWidth * dpr;
+        this.canvas.height = container.clientHeight * dpr;
+        this.ctx.scale(dpr, dpr);
+        this.width = container.clientWidth;
+        this.height = container.clientHeight;
       }
 
       bindEvents() {
         window.addEventListener('resize', () => this.initCanvasSize());
 
-        // Canvas 手牌点击交互检测
-        this.canvas.addEventListener('click', (e) => {
-          if (this.gameState !== 'PLAYING') return;
-
+        // 绑定 Touch 与 Click 两种触摸事件，适配移动端
+        const handlePointer = (e) => {
           const rect = this.canvas.getBoundingClientRect();
-          const clickX = e.clientX - rect.left;
-          const clickY = e.clientY - rect.top;
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-          const cardW = 75;
-          const cardH = 110;
-          const overlap = Math.min(36, (this.canvas.width - 200) / this.myHand.length);
-          const startX = (this.canvas.width - (cardW + (this.myHand.length - 1) * overlap)) / 2;
-          const startY = this.canvas.height - cardH - 20;
+          const clickX = clientX - rect.left;
+          const clickY = clientY - rect.top;
 
-          // 从前往后检测点击的张
+          // 手机端加大卡牌宽高点击响应区域
+          const cardW = Math.min(64, (this.width - 40) / (this.myHand.length || 1));
+          const cardH = 90;
+          const overlap = Math.min(28, (this.width - 80) / (this.myHand.length || 1));
+          const startX = (this.width - (cardW + (this.myHand.length - 1) * overlap)) / 2;
+          const startY = this.height - cardH - 15;
+
           for (let i = this.myHand.length - 1; i >= 0; i--) {
             const x = startX + i * overlap;
             const isLast = i === this.myHand.length - 1;
@@ -612,34 +353,52 @@
               break;
             }
           }
-        });
+        };
+
+        this.canvas.addEventListener('touchstart', (e) => {
+          handlePointer(e);
+          e.preventDefault();
+        }, { passive: false });
+
+        this.canvas.addEventListener('click', handlePointer);
       }
 
-      // --- 网络通信逻辑 ---
       setupSocketListeners() {
-        this.socket.on('room_updated', (room) => {
-          this.players = room.players;
-          document.getElementById('player-count').innerText = room.players.length;
+        // 多人加入房间的实时同步
+        socket.on('room_created', ({ roomId, room }) => {
+          this.updateRoomState(room);
         });
 
-        this.socket.on('game_start', (room) => {
-          this.gameState = 'PLAYING';
-          document.getElementById('room-badge').classList.remove('hidden');
+        socket.on('room_updated', (room) => {
+          this.updateRoomState(room);
+        });
+
+        // 满3人自动开局触发
+        socket.on('game_start', ({ message, room }) => {
+          alert(message);
+          this.updateRoomState(room);
           document.getElementById('action-bar').classList.remove('hidden');
           this.dealCards();
         });
 
-        this.socket.on('cards_played', (data) => {
+        socket.on('cards_played', (data) => {
           this.tableCards.push(data);
         });
 
-        this.socket.on('game_result', (data) => {
-          this.gameState = 'SETTLEMENT';
+        socket.on('game_result', (data) => {
           document.getElementById('action-bar').classList.add('hidden');
           document.getElementById('settlement-modal').classList.remove('hidden');
-          document.getElementById('settlement-title').innerText = data.winner === this.user.username ? '🎉 胜利！' : '💔 失败';
+          document.getElementById('settlement-title').innerText = data.winner === this.user.username ? '🎉 胜利获胜！' : '💔 遗憾落败';
           document.getElementById('settlement-desc').innerText = data.message;
         });
+
+        socket.on('error_message', (msg) => alert(msg));
+      }
+
+      updateRoomState(room) {
+        this.players = room.players;
+        document.getElementById('player-count').innerText = room.players.length;
+        document.getElementById('room-badge').classList.remove('hidden');
       }
 
       async login() {
@@ -662,39 +421,37 @@
             document.getElementById('lobby-modal').classList.remove('hidden');
           }
         } catch (e) {
-          alert('网络服务未就绪，请检查服务端！');
+          alert('网络服务连接失败，请检查后端运行状态！');
         }
       }
 
       createRoom() {
         const roomId = document.getElementById('room-input').value.trim();
-        if (!roomId) return;
+        if (!roomId) return alert('请输入房间号');
         this.roomId = roomId;
         document.getElementById('room-id-text').innerText = roomId;
         document.getElementById('lobby-modal').classList.add('hidden');
-        this.socket.emit('create_room', { roomId, username: this.user.username });
+        socket.emit('create_room', { roomId, username: this.user.username });
       }
 
       joinRoom() {
         const roomId = document.getElementById('room-input').value.trim();
-        if (!roomId) return;
+        if (!roomId) return alert('请输入房间号');
         this.roomId = roomId;
         document.getElementById('room-id-text').innerText = roomId;
         document.getElementById('lobby-modal').classList.add('hidden');
-        this.socket.emit('join_room', { roomId, username: this.user.username });
+        socket.emit('join_room', { roomId, username: this.user.username });
       }
 
-      // 洗牌发牌算法
       dealCards() {
         const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
         const deck = [];
 
         ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
-        deck.push({ rank: 'BLACK_JOKER', suit: '', value: 16 });
-        deck.push({ rank: 'RED_JOKER', suit: '', value: 17 });
+        deck.push({ rank: '小王', suit: '', value: 16 });
+        deck.push({ rank: '大王', suit: '', value: 17 });
 
-        // Fisher-Yates 洗牌
         for (let i = deck.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -713,117 +470,106 @@
         if (this.selectedIndices.size === 0) return alert('请先选择要出的手牌！');
 
         const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
-        const handParsed = CardRulesEngine.parseCards(selectedCards);
+        const handType = CardRulesEngine.parseCards(selectedCards);
 
-        if (handParsed.type === HAND_TYPES.INVALID) {
-          return alert('非法的出牌组合！');
-        }
+        if (!handType) return alert('非法的出牌组合！');
 
-        // 通过 Socket 广播
-        this.socket.emit('play_cards', {
+        socket.emit('play_cards', {
           roomId: this.roomId,
-          cards: selectedCards.map(c => (c.suit || '') + c.rank).join(' ')
+          cards: selectedCards.map(c => (c.suit || '') + c.rank).join(' ') + ` [${handType}]`
         });
 
-        // 移除手牌
         this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
         this.selectedIndices.clear();
 
-        // 模拟胜利判定
         if (this.myHand.length === 0) {
-          this.socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
+          socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
         }
       }
 
-      passTurn() {
-        this.selectedIndices.clear();
-      }
+      passTurn() { this.selectedIndices.clear(); }
 
-      autoPrompt() {
-        alert('智能提示系统：优先出对子或单张');
-      }
+      backToLobby() { window.location.reload(); }
 
-      backToLobby() {
-        window.location.reload();
-      }
-
-      // --- 核心 Canvas 每帧绘制循环 ---
       renderLoop() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(0, 0, this.width, this.height);
 
-        // 1. 绘制游戏桌面背景与装饰
-        this.renderTable();
+        // 1. 桌面中心文字信息
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        this.ctx.font = 'bold 28px sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('欢乐斗地主 · 多端竞技', this.width / 2, this.height / 2 - 30);
 
-        // 2. 绘制其他玩家头像与气泡
-        this.renderPlayers();
+        // 2. 玩家位置与状态
+        this.players.forEach((p, idx) => {
+          const isMe = p.username === (this.user ? this.user.username : '');
+          const posX = isMe ? this.width / 2 : (idx === 1 ? 50 : this.width - 50);
+          const posY = isMe ? this.height - 120 : this.height / 2 - 20;
 
-        // 3. 绘制桌面出牌日志
-        this.renderTableCards();
+          if (!isMe) {
+            this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            this.ctx.beginPath();
+            this.ctx.arc(posX, posY, 24, 0, Math.PI * 2);
+            this.ctx.fill();
 
-        // 4. 绘制玩家手牌
-        if (this.gameState === 'PLAYING') {
-          this.renderMyHand();
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '12px sans-serif';
+            this.ctx.fillText(p.username, posX, posY + 36);
+          }
+        });
+
+        // 3. 桌面已出的牌
+        if (this.tableCards.length > 0) {
+          const last = this.tableCards[this.tableCards.length - 1];
+          this.ctx.fillStyle = '#facc15';
+          this.ctx.font = 'bold 15px sans-serif';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(`${last.username}: ${last.cards}`, this.width / 2, this.height / 2 + 20);
+        }
+
+        // 4. 手机端适配的手牌渲染
+        if (this.myHand.length > 0) {
+          const total = this.myHand.length;
+          const cardW = Math.min(60, (this.width - 40) / total);
+          const cardH = 88;
+          const overlap = Math.min(26, (this.width - 80) / total);
+          const startX = (this.width - (cardW + (total - 1) * overlap)) / 2;
+          const startY = this.height - cardH - 15;
+
+          this.myHand.forEach((card, i) => {
+            const x = startX + i * overlap;
+            const isSelected = this.selectedIndices.has(i);
+            const drawY = isSelected ? startY - 16 : startY;
+
+            // 绘制白色卡牌主体
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.roundRect(x, drawY, cardW, cardH, 6);
+            this.ctx.fill();
+
+            // 边框描边
+            this.ctx.lineWidth = isSelected ? 2 : 1;
+            this.ctx.strokeStyle = isSelected ? '#38bdf8' : '#cbd5e1';
+            this.ctx.stroke();
+
+            // 牌面文字
+            const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
+            this.ctx.fillStyle = isRed ? '#e11d48' : '#0f172a';
+            this.ctx.font = 'bold 14px monospace';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(card.rank, x + 4, drawY + 16);
+
+            // 花色
+            this.ctx.font = '18px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(card.suit || (card.rank === '大王' ? '★' : '☆'), x + cardW / 2, drawY + cardH / 2 + 8);
+          });
         }
 
         requestAnimationFrame(() => this.renderLoop());
       }
-
-      renderTable() {
-        // 画桌面线条/logo
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-        this.ctx.font = '900 48px sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('欢乐斗地主 · 竞技版', this.canvas.width / 2, this.canvas.height / 2 - 50);
-      }
-
-      renderPlayers() {
-        // 分别绘制左、右两边其他玩家状态
-        this.players.forEach((p, idx) => {
-          if (p.username === (this.user ? this.user.username : '')) return;
-
-          const isLeft = idx % 2 === 1;
-          const x = isLeft ? 60 : this.canvas.width - 60;
-          const y = this.canvas.height / 2 - 40;
-
-          this.ctx.fillStyle = 'rgba(0,0,0,0.4)';
-          this.ctx.beginPath();
-          this.ctx.arc(x, y, 30, 0, Math.PI * 2);
-          this.ctx.fill();
-
-          this.ctx.fillStyle = '#fff';
-          this.ctx.font = '12px sans-serif';
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText(p.username, x, y + 45);
-        });
-      }
-
-      renderTableCards() {
-        if (this.tableCards.length === 0) return;
-        const lastPlay = this.tableCards[this.tableCards.length - 1];
-
-        this.ctx.fillStyle = '#facc15';
-        this.ctx.font = 'bold 16px sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(`${lastPlay.username} 出牌: ${lastPlay.cards}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
-      }
-
-      renderMyHand() {
-        const cardW = 75;
-        const cardH = 110;
-        const total = this.myHand.length;
-        const overlap = Math.min(36, (this.canvas.width - 200) / total);
-        const startX = (this.canvas.width - (cardW + (total - 1) * overlap)) / 2;
-        const startY = this.canvas.height - cardH - 20;
-
-        this.myHand.forEach((card, i) => {
-          const x = startX + i * overlap;
-          const isSelected = this.selectedIndices.has(i);
-          this.cardRenderer.drawCard(card, x, startY, cardW, cardH, isSelected, false);
-        });
-      }
     }
 
-    // 全局启动应用
     let gameApp;
     window.addEventListener('DOMContentLoaded', () => {
       gameApp = new LandlordGameApp();
