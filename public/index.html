@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 赛博斗地主 2FA 旗舰版</title>
+  <title>CYBER LANDLORD - 多模式全风貌旗舰版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -19,14 +19,6 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Courier New', Consolas, "PingFang SC", sans-serif; }
     html, body { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-dark); display: flex; justify-content: center; align-items: center; }
-
-    /* 背景网格微效果 */
-    body::before {
-      content: ''; position: absolute; width: 200%; height: 200%;
-      background: linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
-      background-size: 30px 30px; pointer-events: none; z-index: 0;
-    }
 
     #game-container {
       position: relative; width: 100vw; height: 100vh;
@@ -53,7 +45,6 @@
       background: linear-gradient(135deg, var(--cyber-cyan) 0%, var(--cyber-pink) 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       font-weight: 900; letter-spacing: 2px; text-align: center;
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
     }
 
     .sidebar-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
@@ -67,7 +58,6 @@
     .nav-item.active {
       background: linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(255, 0, 127, 0.1) 100%);
       border-color: var(--cyber-cyan); color: var(--cyber-cyan);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
     }
 
     .sidebar-user {
@@ -75,7 +65,6 @@
       border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 10px;
     }
 
-    /* 极客 UI 组件 */
     .main-viewport { flex: 1; height: 100%; position: relative; pointer-events: none; z-index: 10; }
     .hidden { display: none !important; }
 
@@ -83,24 +72,23 @@
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--panel-bg); backdrop-filter: blur(16px);
       border: 1px solid var(--cyber-cyan); border-radius: 16px;
-      padding: 28px; width: 90%; max-width: 440px; text-align: center;
+      padding: 28px; width: 90%; max-width: 460px; text-align: center;
       box-shadow: var(--shadow-cyber); pointer-events: auto; z-index: 20;
     }
 
-    .panel-title { font-size: 20px; color: var(--cyber-cyan); margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 8px var(--cyber-cyan); }
+    .panel-title { font-size: 20px; color: var(--cyber-cyan); margin-bottom: 18px; font-weight: 900; letter-spacing: 1px; }
 
-    .input-field {
+    .input-field, select.input-field {
       width: 100%; padding: 12px 16px; border-radius: 8px;
       border: 1px solid rgba(0, 240, 255, 0.3); background: rgba(5, 7, 15, 0.8);
-      color: #fff; font-size: 14px; margin-bottom: 14px; outline: none; transition: all 0.2s;
+      color: #fff; font-size: 14px; margin-bottom: 14px; outline: none;
     }
-    .input-field:focus { border-color: var(--cyber-pink); box-shadow: 0 0 10px rgba(255, 0, 127, 0.4); }
 
     .btn {
       padding: 12px 24px; border-radius: 8px; border: none; font-size: 13px; font-weight: 900;
       cursor: pointer; outline: none; transition: all 0.2s;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); pointer-events: auto;
-      display: inline-flex; align-items: center; justify-content: center; text-transform: uppercase;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
     .btn:active { transform: scale(0.95); }
@@ -126,9 +114,18 @@
     .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 260px; overflow-y: auto; margin-bottom: 18px; }
     .shop-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 12px; padding: 12px; text-align: center; }
 
-    /* 2FA 专属样式 */
-    .qr-container { background: #fff; padding: 12px; border-radius: 8px; display: inline-block; margin: 12px 0; }
-    .qr-container img { width: 140px; height: 140px; display: block; }
+    /* ===== 自定义 Toast 悬浮通知浮窗系统 (代替原生 alert) ===== */
+    .toast-container {
+      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 999; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast-msg {
+      background: rgba(10, 15, 29, 0.95); border: 1px solid var(--cyber-cyan);
+      color: #fff; padding: 10px 24px; border-radius: 30px; font-size: 13px; font-weight: bold;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.3); animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
   </style>
 </head>
 <body>
@@ -136,23 +133,26 @@
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
+    <!-- 悬浮通知 Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
     <!-- 侧边栏 Sidebar -->
     <div class="sidebar hidden" id="main-sidebar">
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">2FA SECURED V3.0</p>
+          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">2FA & MULTI-DECK V4.0</p>
         </div>
 
         <div class="sidebar-menu">
           <div class="nav-item active" id="nav-lobby" onclick="gameApp.switchView('lobby')">
-            <span>🎮</span> 赛博大厅
+            <span>🎮</span> 赛博对局大厅
           </div>
           <div class="nav-item" id="nav-shop" onclick="gameApp.switchView('shop')">
-            <span>🛒</span> 装备商城
+            <span>🛒</span> 道具商城
           </div>
           <div class="nav-item" id="nav-2fa" onclick="gameApp.switchView('2fa')">
-            <span>🔐</span> 2FA 安全锁
+            <span>🔐</span> 2FA 安全验证
           </div>
         </div>
       </div>
@@ -166,17 +166,17 @@
       </div>
     </div>
 
-    <!-- 右侧画板区 -->
+    <!-- 主视口面板区 -->
     <div class="main-viewport">
       <div class="turn-tip hidden" id="turn-tip">SYSTEM: WAITING...</div>
 
       <div class="action-bar hidden" id="action-bar">
-        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">PASS</button>
+        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">PASS / 不出</button>
         <button class="btn btn-cyber" onclick="gameApp.sortHand()">理牌</button>
         <button class="btn btn-pink" id="btn-play" onclick="gameApp.playCards()">确认出牌</button>
       </div>
 
-      <!-- 1. 登录/注册/2FA 交互面板 -->
+      <!-- 1. 登录与注册 -->
       <div class="view-panel" id="panel-auth">
         <div class="panel-title">CYBER AUTHENTICATION</div>
         <div class="auth-tabs">
@@ -191,36 +191,55 @@
         <button class="btn btn-cyber" id="auth-submit-btn" style="width: 100%; margin-top: 6px;" onclick="gameApp.handleAuth()">访问节点</button>
       </div>
 
-      <!-- 2. 赛博大厅面板 -->
+      <!-- 2. 多模式建房大厅 (支持2人/3人/5人双副牌) -->
       <div class="view-panel hidden" id="panel-lobby">
-        <div class="panel-title">🎮 竞技对局大厅</div>
-        <input type="text" id="room-input" class="input-field" placeholder="房间加密频段 (例如: 888)" value="888" />
+        <div class="panel-title">🎮 游戏模式与匹配</div>
+        
+        <label style="color:#8a99ad; font-size:12px; display:block; text-align:left; margin-bottom:4px;">选择对局人数/人数模式：</label>
+        <select id="room-mode-select" class="input-field" onchange="gameApp.onModeChange()">
+          <option value="2">二人 PK 模式 (1副牌 · 快速决斗)</option>
+          <option value="3">三人经典斗地主 (1副牌 · 经典斗地主)</option>
+          <option value="5">五人双副牌模式 (2副牌 · 108张超级大战)</option>
+        </select>
+
+        <div id="5p-submode-box" class="hidden" style="margin-bottom: 12px; text-align: left;">
+          <label style="color:#8a99ad; font-size:12px; display:block; margin-bottom:4px;">五人玩法设置：</label>
+          <select id="room-submode-select" class="input-field">
+            <option value="LANDLORD">【2打3阵营斗地主】(2地主对战3农民)</option>
+            <option value="FREE_FOR_ALL">【5人乱斗各打各】(个人独立战)</option>
+          </select>
+        </div>
+
+        <input type="text" id="room-input" class="input-field" placeholder="输入/创建房间号 (例如: 888)" value="888" />
+        
         <div style="display: flex; gap: 12px; margin-top: 6px;">
-          <button class="btn btn-cyber" style="flex: 1;" onclick="gameApp.createRoom()">构建节点</button>
-          <button class="btn btn-pink" style="flex: 1;" onclick="gameApp.joinRoom()">快速接入</button>
+          <button class="btn btn-cyber" style="flex: 1;" onclick="gameApp.createRoom()">构建房间</button>
+          <button class="btn btn-pink" style="flex: 1;" onclick="gameApp.joinRoom()">加入房间</button>
         </div>
       </div>
 
-      <!-- 3. 商城面板 -->
+      <!-- 3. 道具商城 -->
       <div class="view-panel hidden" id="panel-shop">
         <div class="panel-title">🛒 赛博装备商城</div>
         <div class="shop-grid" id="shop-grid"></div>
         <button class="btn btn-dark" style="width: 100%;" onclick="gameApp.switchView('lobby')">返回大厅</button>
       </div>
 
-      <!-- 4. 2FA 双因素安全配置面板 -->
+      <!-- 4. 2FA 设置 -->
       <div class="view-panel hidden" id="panel-2fa">
         <div class="panel-title">🔐 2FA 安全验证绑定</div>
-        <p style="color:#8a99ad; font-size:12px; margin-bottom:10px;">使用 Authenticator / Google 验证码 App 扫描下方二维码：</p>
+        <p style="color:#8a99ad; font-size:12px; margin-bottom:10px;">使用 Google / Authenticator App 扫描二维码：</p>
         
         <div id="2fa-setup-box">
-          <button class="btn btn-gold" onclick="gameApp.generate2FA()">生成 2FA 二维码</button>
+          <button class="btn btn-gold" onclick="gameApp.generate2FA()">生成 2FA 密钥</button>
         </div>
 
         <div id="2fa-qr-box" class="hidden">
-          <div class="qr-container"><img id="2fa-qr-img" src="" alt="2FA QR" /></div>
-          <input type="text" id="verify-2fa-input" class="input-field" placeholder="输入 App 上的 6 位数字" maxlength="6" />
-          <button class="btn btn-cyber" style="width:100%" onclick="gameApp.verify2FA()">确认激活 2FA 保护</button>
+          <div style="background:#fff; padding:8px; border-radius:8px; display:inline-block; margin-bottom:10px;">
+            <img id="2fa-qr-img" src="" style="width:130px; height:130px; display:block;" />
+          </div>
+          <input type="text" id="verify-2fa-input" class="input-field" placeholder="输入 6 位验证码" maxlength="6" />
+          <button class="btn btn-cyber" style="width:100%" onclick="gameApp.verify2FA()">激活 2FA 绑定</button>
         </div>
       </div>
     </div>
@@ -234,6 +253,7 @@
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
+    // 全功能牌型校验引擎
     class CardRulesEngine {
       static parseCards(cards) {
         if (!cards || cards.length === 0) return null;
@@ -278,6 +298,16 @@
         requestAnimationFrame(() => this.renderLoop());
       }
 
+      // 自定义悬浮通知 Toast (替换原生 alert)
+      showToast(text) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-msg';
+        toast.innerText = text;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+
       initCanvasSize() {
         const container = document.getElementById('game-container');
         const dpr = window.devicePixelRatio || 1;
@@ -314,6 +344,16 @@
         }
       }
 
+      onModeChange() {
+        const mode = document.getElementById('room-mode-select').value;
+        const subBox = document.getElementById('5p-submode-box');
+        if (mode === '5') {
+          subBox.classList.remove('hidden');
+        } else {
+          subBox.classList.add('hidden');
+        }
+      }
+
       switchView(viewName) {
         ['panel-lobby', 'panel-shop', 'panel-2fa'].forEach(id => document.getElementById(id).classList.add('hidden'));
         ['nav-lobby', 'nav-shop', 'nav-2fa'].forEach(id => document.getElementById(id).classList.remove('active'));
@@ -335,7 +375,7 @@
         const password = document.getElementById('auth-password').value.trim();
         const twoFAToken = document.getElementById('auth-2fa-input').value.trim();
 
-        if (!username || !password) return alert('请输入账号和密码');
+        if (!username || !password) return this.showToast('⚠️ 请输入账号和密码！');
 
         const endpoint = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
         const res = await fetch(endpoint, {
@@ -347,13 +387,13 @@
 
         if (data.require2FA) {
           document.getElementById('auth-2fa-input').classList.remove('hidden');
-          alert(data.message);
+          this.showToast(data.message);
           return;
         }
 
         if (data.success) {
           if (this.authMode === 'register') {
-            alert('注册成功！');
+            this.showToast('✅ 注册成功！请直接登录');
             this.switchAuthTab('login');
           } else {
             this.user = data.user;
@@ -364,9 +404,10 @@
 
             socket = io(window.location.origin);
             this.setupSocketListeners();
+            this.showToast(`🎉 欢迎回来，${this.user.username}！`);
           }
         } else {
-          alert(data.error);
+          this.showToast('❌ ' + data.error);
         }
       }
 
@@ -386,7 +427,7 @@
 
       async verify2FA() {
         const token = document.getElementById('verify-2fa-input').value.trim();
-        if (!token) return alert('请输入 6 位验证码');
+        if (!token) return this.showToast('请输验证码！');
 
         const res = await fetch('/api/user/verify-2fa', {
           method: 'POST',
@@ -396,10 +437,10 @@
         const data = await res.json();
         if (data.success) {
           this.user = data.user;
-          alert(data.message);
+          this.showToast(data.message);
           this.switchView('lobby');
         } else {
-          alert(data.error);
+          this.showToast('❌ ' + data.error);
         }
       }
 
@@ -423,7 +464,7 @@
                 <div style="color:var(--cyber-yellow); font-size:12px; margin:4px 0;">🪙 ${item.price}</div>
                 <button class="btn btn-gold" style="font-size:10px; padding:4px 8px;" 
                   ${owned ? 'disabled' : ''} onclick="gameApp.buyItem('${item.itemId}')">
-                  ${owned ? 'EQUIPPED' : 'PURCHASE'}
+                  ${owned ? '已装备' : '购买'}
                 </button>
               </div>
             `;
@@ -441,22 +482,24 @@
         if (data.success) {
           this.user = data.user;
           this.updateUserUI();
-          alert(data.message);
+          this.showToast(data.message);
           this.loadShopItems();
         } else {
-          alert(data.error);
+          this.showToast('❌ ' + data.error);
         }
       }
 
       setupSocketListeners() {
         socket.on('room_created', ({ room }) => this.roomId = room.id);
-        socket.on('game_start', ({ message, currentTurnSocketId }) => {
-          alert(message);
+        socket.on('game_start', ({ message, currentTurnSocketId, room }) => {
+          this.showToast(message);
           document.getElementById('panel-lobby').classList.add('hidden');
           document.getElementById('main-sidebar').classList.add('hidden');
           document.getElementById('action-bar').classList.remove('hidden');
           document.getElementById('turn-tip').classList.remove('hidden');
-          this.dealCards();
+          
+          // 根据房间模式洗牌分发 (支持 1 副或 2 副牌)
+          this.dealCards(room.maxPlayers);
           this.updateTurnState(currentTurnSocketId, '');
         });
 
@@ -465,6 +508,7 @@
         });
 
         socket.on('cards_played', (data) => this.tableCards.push(data));
+        socket.on('error_message', (msg) => this.showToast('⚠️ ' + msg));
       }
 
       updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
@@ -475,30 +519,58 @@
         document.getElementById('btn-pass').disabled = !this.isMyTurn || !this.lastPlayedHand || this.lastPlayedHand.playerId === socket.id;
 
         const turnTip = document.getElementById('turn-tip');
-        turnTip.innerText = this.isMyTurn ? "👉 你的出牌回合！" : `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
+        turnTip.innerText = this.isMyTurn ? "👉 轮到你的回合，请选择出牌！" : `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
       }
 
-      createRoom() { socket.emit('create_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
-      joinRoom() { socket.emit('join_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
+      createRoom() {
+        const mode = document.getElementById('room-mode-select').value;
+        const subMode = document.getElementById('room-submode-select').value;
+        const roomId = document.getElementById('room-input').value.trim();
+        if (!roomId) return this.showToast('请输入房间号！');
+        
+        socket.emit('create_room', { roomId, username: this.user.username, mode, subMode });
+      }
 
-      dealCards() {
+      joinRoom() {
+        const roomId = document.getElementById('room-input').value.trim();
+        if (!roomId) return this.showToast('请输入房间号！');
+        socket.emit('join_room', { roomId, username: this.user.username });
+      }
+
+      // 洗牌发牌算法：支持 1 副牌 (54张) 或 2 副牌 (108张)
+      dealCards(maxPlayers) {
         const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+        
+        // 5人模式使用 2 副牌 (108张)；2/3人使用 1 副牌 (54张)
+        const deckCount = (maxPlayers === 5) ? 2 : 1;
         const deck = [];
-        ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
-        deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
-        for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-        this.myHand = deck.slice(0, 17).sort((a,b) => b.value - a.value);
+
+        for (let d = 0; d < deckCount; d++) {
+          ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
+          deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
+        }
+
+        // Fisher-Yates 随机洗牌
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        // 5人模式每人发 20 张；2/3人模式每人发 17 张
+        const handCount = (maxPlayers === 5) ? 20 : 17;
+        this.myHand = deck.slice(0, handCount).sort((a,b) => b.value - a.value);
       }
 
       sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
 
       playCards() {
-        if (this.selectedIndices.size === 0) return alert('请选择手牌');
+        if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
         const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
         const handInfo = CardRulesEngine.parseCards(selectedCards);
-        if (!handInfo) return alert('非法的出牌组合！');
-        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return alert('无法压过上家的牌！');
+        
+        if (!handInfo) return this.showToast('非法的出牌组合！');
+        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return this.showToast('出的牌无法压过上家！');
 
         handInfo.cardsText = selectedCards.map(c => (c.suit || '') + c.rank).join(' ');
         socket.emit('play_cards', { roomId: this.roomId, handInfo });
@@ -513,8 +585,7 @@
       renderLoop() {
         this.ctx.clearRect(0, 0, this.width, this.height);
 
-        // 赛博朋克画板文字
-        this.ctx.fillStyle = 'rgba(0, 240, 255, 0.05)';
+        this.ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
         this.ctx.font = '900 36px "Courier New"';
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 30);
@@ -526,7 +597,6 @@
           this.ctx.fillText(`${last.username}: ${last.cardsText || last.cards}`, this.width / 2, this.height / 2 + 20);
         }
 
-        // 赛博高发光扑克牌绘制
         if (this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = Math.min(60, (this.width - 40) / total);
@@ -540,13 +610,11 @@
             const isSelected = this.selectedIndices.has(i);
             const drawY = isSelected ? startY - 16 : startY;
 
-            // 赛博牌面底色
             this.ctx.fillStyle = '#0a0f1d';
             this.ctx.beginPath();
             this.ctx.roundRect(x, drawY, cardW, cardH, 6);
             this.ctx.fill();
 
-            // 霓虹发光边框
             this.ctx.lineWidth = isSelected ? 2.5 : 1;
             this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
             this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
