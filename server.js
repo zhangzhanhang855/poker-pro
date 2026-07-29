@@ -30,7 +30,6 @@ const UserSchema = new mongoose.Schema({
   avatar: { type: String, default: '🤖' },
   equippedCardSkin: { type: String, default: 'skin_cyber' },
   inventory: { type: [String], default: ['skin_cyber'] },
-  // 2FA 字段
   is2FAEnabled: { type: Boolean, default: false },
   twoFASecret: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
@@ -60,13 +59,10 @@ async function initShopItems() {
 }
 initShopItems();
 
-// --- 2. 账号认证与 2FA API ---
-
-// 注册
+// --- 2. API 路由接口 ---
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '账号和密码不能为空' });
-
   try {
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: '用户名已存在' });
@@ -74,14 +70,12 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword });
     await user.save();
-
-    res.json({ success: true, message: '注册成功，请直接登录！' });
+    res.json({ success: true, message: '注册成功，请登录！' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 登录 (支持 2FA 强校验)
 app.post('/api/auth/login', async (req, res) => {
   const { username, password, twoFAToken } = req.body;
   try {
@@ -91,15 +85,10 @@ app.post('/api/auth/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: '密码错误' });
 
-    // 2FA 校验逻辑
     if (user.is2FAEnabled) {
-      if (!twoFAToken) {
-        return res.json({ success: false, require2FA: true, message: '请输入 2FA 验证码' });
-      }
+      if (!twoFAToken) return res.json({ success: false, require2FA: true, message: '请输入 2FA 验证码' });
       const isValid = authenticator.check(twoFAToken, user.twoFASecret);
-      if (!isValid) {
-        return res.status(400).json({ error: '2FA 验证码错误或已过期！' });
-      }
+      if (!isValid) return res.status(400).json({ error: '2FA 验证码错误或已过期！' });
     }
 
     const { password: _, twoFASecret: __, ...userInfo } = user.toObject();
@@ -109,14 +98,12 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2FA 生成二维码请求
 app.post('/api/user/generate-2fa', async (req, res) => {
   const { username } = req.body;
   try {
     const secret = authenticator.generateSecret();
     const otpauth = authenticator.keyuri(username, 'JR_Cyber_Landlord', secret);
     const qrCodeUrl = await QRCode.toDataURL(otpauth);
-
     await User.findOneAndUpdate({ username }, { twoFASecret: secret });
     res.json({ success: true, secret, qrCodeUrl });
   } catch (err) {
@@ -124,27 +111,24 @@ app.post('/api/user/generate-2fa', async (req, res) => {
   }
 });
 
-// 2FA 确认开启绑定
 app.post('/api/user/verify-2fa', async (req, res) => {
   const { username, token } = req.body;
   try {
     const user = await User.findOne({ username });
     const isValid = authenticator.check(token, user.twoFASecret);
-
     if (isValid) {
       user.is2FAEnabled = true;
       await user.save();
       const { password: _, twoFASecret: __, ...userInfo } = user.toObject();
-      res.json({ success: true, user: userInfo, message: '2FA 双因素安全验证绑定成功！' });
+      res.json({ success: true, user: userInfo, message: '2FA 双因素认证激活成功！' });
     } else {
-      res.status(400).json({ error: '验证码错误，请重新输入 Authenticator 上的 6 位数字' });
+      res.status(400).json({ error: '2FA 验证码错误！' });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 商城与管理 API
 app.get('/api/shop/items', async (req, res) => {
   const items = await Item.find();
   res.json({ success: true, items });
@@ -155,7 +139,7 @@ app.post('/api/shop/buy', async (req, res) => {
   const user = await User.findOne({ username });
   const item = await Item.findOne({ itemId });
 
-  if (!user || !item) return res.status(400).json({ error: '道具或用户不存在' });
+  if (!user || !item) return res.status(400).json({ error: '数据不存在' });
   if (user.coins < item.price) return res.status(400).json({ error: '余额不足' });
 
   user.coins -= item.price;
@@ -179,27 +163,38 @@ app.post('/api/admin/update-coins', async (req, res) => {
   res.json({ success: true, user });
 });
 
-// --- 3. Socket.IO 房间系统 ---
+// --- 3. 重构后的多模式 Socket.IO 房间逻辑 (2人/3人/5人双副牌) ---
 const rooms = {};
 
 io.on('connection', (socket) => {
-  socket.on('create_room', async ({ roomId, username }) => {
-    if (rooms[roomId]) return socket.emit('error_message', '房间号已存在！');
+  // 创建房间（支持选择模式：2人、3人、5人，以及5人模式下的各打各或斗地主）
+  socket.on('create_room', async ({ roomId, username, mode = 2, subMode = 'LANDLORD' }) => {
+    if (rooms[roomId]) return socket.emit('error_message', '房间号已使用，请更换！');
     const user = await User.findOne({ username });
 
+    const maxPlayers = parseInt(mode, 10);
     rooms[roomId] = {
       id: roomId,
+      maxPlayers: maxPlayers,             // 2, 3 或 5
+      subMode: subMode,                  // LANDLORD(斗地主) 或 FREE_FOR_ALL(各打各)
       players: [{ id: socket.id, username, coins: user ? user.coins : 0, avatar: user ? user.avatar : '🤖' }],
-      status: 'waiting', turnIndex: 0, lastPlayedHand: null, passCount: 0
+      status: 'waiting',
+      turnIndex: 0,
+      lastPlayedHand: null,
+      passCount: 0
     };
+
     socket.join(roomId);
     socket.emit('room_created', { roomId, room: rooms[roomId] });
   });
 
+  // 加入房间
   socket.on('join_room', async ({ roomId, username }) => {
     const room = rooms[roomId];
     if (!room) return socket.emit('error_message', '房间不存在！');
-    if (room.players.length >= 2) return socket.emit('error_message', '房间已满！');
+    if (room.players.length >= room.maxPlayers) {
+      return socket.emit('error_message', `房间已满（上限 ${room.maxPlayers} 人）！`);
+    }
 
     const user = await User.findOne({ username });
     room.players.push({ id: socket.id, username, coins: user ? user.coins : 0, avatar: user ? user.avatar : '🤖' });
@@ -207,59 +202,114 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('room_updated', room);
 
-    if (room.players.length === 2) {
+    // 满员自动触发开局
+    if (room.players.length === room.maxPlayers) {
       room.status = 'playing';
-      room.turnIndex = Math.floor(Math.random() * 2);
+      room.turnIndex = Math.floor(Math.random() * room.maxPlayers);
       const firstPlayer = room.players[room.turnIndex];
 
       io.to(roomId).emit('game_start', {
-        message: `对局开启！由【${firstPlayer.username}】先手出牌！`,
-        room, currentTurnSocketId: firstPlayer.id
+        message: `对局开启！【${room.maxPlayers}人模式】由【${firstPlayer.username}】先手出牌！`,
+        room,
+        currentTurnSocketId: firstPlayer.id
       });
     }
   });
 
+  // 出牌广播与回合推进
   socket.on('play_cards', ({ roomId, handInfo }) => {
     const room = rooms[roomId];
     if (!room) return;
+
     const currentTurnPlayer = room.players[room.turnIndex];
-    if (currentTurnPlayer.id !== socket.id) return socket.emit('error_message', '非你的出牌回合！');
+    if (currentTurnPlayer.id !== socket.id) return socket.emit('error_message', '还没轮到你出牌！');
 
     room.lastPlayedHand = {
-      playerId: socket.id, username: currentTurnPlayer.username,
-      type: handInfo.type, value: handInfo.value, length: handInfo.length, cardsText: handInfo.cardsText
+      playerId: socket.id,
+      username: currentTurnPlayer.username,
+      type: handInfo.type,
+      value: handInfo.value,
+      length: handInfo.length,
+      cardsText: handInfo.cardsText
     };
     room.passCount = 0;
 
     io.to(roomId).emit('cards_played', room.lastPlayedHand);
-    room.turnIndex = (room.turnIndex + 1) % 2;
+
+    // 顺序轮转下一个玩家
+    room.turnIndex = (room.turnIndex + 1) % room.maxPlayers;
     const nextPlayer = room.players[room.turnIndex];
 
-    io.to(roomId).emit('turn_changed', { currentTurnSocketId: nextPlayer.id, username: nextPlayer.username, lastPlayedHand: room.lastPlayedHand });
+    io.to(roomId).emit('turn_changed', {
+      currentTurnSocketId: nextPlayer.id,
+      username: nextPlayer.username,
+      lastPlayedHand: room.lastPlayedHand
+    });
   });
 
+  // 选择不出 Pass
   socket.on('pass_turn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room) return;
+
     const currentTurnPlayer = room.players[room.turnIndex];
     if (currentTurnPlayer.id !== socket.id) return;
 
     room.passCount++;
-    if (room.passCount >= 1) room.lastPlayedHand = null;
+    // 如果除上家外其他人全 Pass，清空桌面压牌权限
+    if (room.passCount >= room.maxPlayers - 1) {
+      room.lastPlayedHand = null;
+    }
 
-    io.to(roomId).emit('cards_played', { playerId: socket.id, username: currentTurnPlayer.username, cardsText: '不出 / 要不起' });
-    room.turnIndex = (room.turnIndex + 1) % 2;
+    io.to(roomId).emit('cards_played', {
+      playerId: socket.id,
+      username: currentTurnPlayer.username,
+      cardsText: '不出 / 要不起'
+    });
+
+    room.turnIndex = (room.turnIndex + 1) % room.maxPlayers;
     const nextPlayer = room.players[room.turnIndex];
 
-    io.to(roomId).emit('turn_changed', { currentTurnSocketId: nextPlayer.id, username: nextPlayer.username, lastPlayedHand: room.lastPlayedHand });
+    io.to(roomId).emit('turn_changed', {
+      currentTurnSocketId: nextPlayer.id,
+      username: nextPlayer.username,
+      lastPlayedHand: room.lastPlayedHand
+    });
   });
 
   socket.on('game_over', async ({ roomId, winnerUsername }) => {
     const room = rooms[roomId];
     if (!room) return;
-    const updatedUser = await User.findOneAndUpdate({ username: winnerUsername }, { $inc: { coins: 300 } }, { new: true });
-    io.to(roomId).emit('game_result', { winner: winnerUsername, reward: 300, message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！获得 300 金币！` });
-    delete rooms[roomId];
+
+    try {
+      const updatedUser = await User.findOneAndUpdate(
+        { username: winnerUsername },
+        { $inc: { coins: 300 } },
+        { new: true }
+      );
+
+      io.to(roomId).emit('game_result', {
+        winner: winnerUsername,
+        reward: 300,
+        message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！结算加成 +300 金币！`
+      });
+      delete rooms[roomId];
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    for (const roomId in rooms) {
+      const room = rooms[roomId];
+      const index = room.players.findIndex(p => p.id === socket.id);
+      if (index !== -1) {
+        room.players.splice(index, 1);
+        if (room.players.length === 0) delete rooms[roomId];
+        else io.to(roomId).emit('room_updated', room);
+        break;
+      }
+    }
   });
 });
 
