@@ -6,7 +6,7 @@
     <title>CyberStrike - 游戏大厅</title>
     <style>
         /* ==========================================================================
-           1. 全局变量与基础重置 (CSS Variables & Reset)
+           1. Global Variables & Reset
            ========================================================================== */
         :root {
             --bg-primary: #0a0d14;
@@ -59,7 +59,6 @@
             position: relative;
         }
 
-        /* 背景网格网点效果 */
         body::before {
             content: "";
             position: absolute;
@@ -74,7 +73,6 @@
             pointer-events: none;
         }
 
-        /* 自定义滚动条 */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -91,7 +89,7 @@
         }
 
         /* ==========================================================================
-           2. 页面控制器框架 (App Containers)
+           2. Stage Layout
            ========================================================================== */
         .app-stage {
             display: none;
@@ -106,9 +104,7 @@
             opacity: 1;
         }
 
-        /* ==========================================================================
-           3. 登录 / 注册界面 (Login View)
-           ========================================================================== */
+        /* Login Stage */
         #stage-login {
             justify-content: center;
             align-items: center;
@@ -188,7 +184,7 @@
             align-items: center;
         }
 
-        .input-wrapper input {
+        .input-wrapper input, .input-wrapper select {
             width: 100%;
             padding: 14px 16px;
             background: rgba(0, 0, 0, 0.3);
@@ -200,7 +196,7 @@
             transition: var(--transition-smooth);
         }
 
-        .input-wrapper input:focus {
+        .input-wrapper input:focus, .input-wrapper select:focus {
             border-color: var(--accent-cyan);
             box-shadow: 0 0 12px rgba(0, 242, 254, 0.2);
             background: rgba(0, 0, 0, 0.5);
@@ -229,18 +225,11 @@
             box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
         }
 
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
-        /* ==========================================================================
-           4. 主游戏大厅框架 (Main Lobby View)
-           ========================================================================== */
+        /* Lobby Stage Framework */
         #stage-lobby {
             position: relative;
         }
 
-        /* 侧边栏 / 导航栏 (Responsive Layout) */
         .app-sidebar {
             background: var(--bg-glass);
             backdrop-filter: blur(20px);
@@ -311,7 +300,6 @@
             flex-shrink: 0;
         }
 
-        /* 玩家全局状态微缩卡片 */
         .user-mini-card {
             margin-top: auto;
             padding: 16px;
@@ -367,7 +355,6 @@
             font-weight: 600;
         }
 
-        /* 主视图面板容器 */
         .app-content {
             flex: 1;
             height: 100vh;
@@ -395,7 +382,6 @@
             margin-top: 2px;
         }
 
-        /* 顶部代币资产栏 */
         .wallet-bar {
             display: flex;
             gap: 16px;
@@ -442,15 +428,10 @@
         }
 
         /* ==========================================================================
-           5. 响应式布局设计 (Responsive Breakdown)
+           3. Responsive Breakpoints
            ========================================================================== */
-
-        /* 📱 手机移动端 (Mobile View < 768px) */
         @media (max-width: 767px) {
-            #stage-lobby {
-                flex-direction: column;
-            }
-
+            #stage-lobby { flex-direction: column; }
             .app-sidebar {
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
@@ -461,49 +442,17 @@
                 justify-content: space-around;
                 padding: 0 12px;
             }
-
-            .brand-logo, .user-mini-card {
-                display: none; /* 移动端隐藏大Logo和侧边玩家卡片 */
-            }
-
-            .nav-menu {
-                width: 100%;
-                justify-content: space-around;
-            }
-
-            .nav-item {
-                flex-direction: column;
-                gap: 4px;
-                padding: 8px 16px;
-                font-size: 10px;
-            }
-
-            .nav-item svg {
-                width: 20px; height: 20px;
-            }
-
-            .app-content {
-                padding-bottom: calc(var(--navbar-height) + 20px);
-            }
-
-            .content-header {
-                padding: 20px 20px 0 20px;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-
-            .view-panel {
-                padding: 20px;
-            }
+            .brand-logo, .user-mini-card { display: none; }
+            .nav-menu { width: 100%; justify-content: space-around; }
+            .nav-item { flex-direction: column; gap: 4px; padding: 8px 16px; font-size: 10px; }
+            .nav-item svg { width: 20px; height: 20px; }
+            .app-content { padding-bottom: calc(var(--navbar-height) + 20px); }
+            .content-header { padding: 20px 20px 0 20px; flex-direction: column; align-items: flex-start; gap: 12px; }
+            .view-panel { padding: 20px; }
         }
 
-        /* 💻 iPad & 桌面端 (iPad / Desktop ≥ 768px) */
         @media (min-width: 768px) {
-            #stage-lobby {
-                flex-direction: row;
-            }
-
+            #stage-lobby { flex-direction: row; }
             .app-sidebar {
                 width: var(--sidebar-width);
                 height: 100vh;
@@ -511,145 +460,13 @@
                 flex-direction: column;
                 padding: 20px;
             }
-
-            .nav-menu {
-                flex-direction: column;
-                gap: 8px;
-                margin-top: 24px;
-            }
-
-            .nav-item {
-                padding: 14px 18px;
-                font-size: 14px;
-            }
+            .nav-menu { flex-direction: column; gap: 8px; margin-top: 24px; }
+            .nav-item { padding: 14px 18px; font-size: 14px; }
         }
 
         /* ==========================================================================
-           6. 各大模块详细样式 (Sub-Modules UI)
+           4. Game Modes & Room UI Extensions
            ========================================================================== */
-
-        /* --- A. 账户设置 (Account Settings View) --- */
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
-        }
-
-        .dashboard-card {
-            background: var(--bg-glass-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 14px;
-        }
-
-        .card-header h3 {
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        /* 个人资料表单 */
-        .profile-edit-box {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .avatar-upload {
-            position: relative;
-            cursor: pointer;
-        }
-
-        .avatar-upload img {
-            width: 70px; height: 70px;
-            border-radius: 50%;
-            border: 2px solid var(--accent-cyan);
-        }
-
-        .avatar-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: var(--transition-smooth);
-            font-size: 10px;
-            color: #fff;
-        }
-
-        .avatar-upload:hover .avatar-overlay {
-            opacity: 1;
-        }
-
-        /* 开关选项 Row */
-        .toggle-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .toggle-info h4 {
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .toggle-info p {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 26px;
-        }
-
-        .switch input { opacity: 0; width: 0; height: 0; }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: var(--bg-tertiary);
-            transition: .3s;
-            border-radius: 34px;
-            border: 1px solid var(--border-color);
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px; width: 18px;
-            left: 3px; bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: var(--accent-cyan);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(22px);
-            background-color: #000;
-        }
-
-        /* --- B. 开始游戏 (Game Modes View) --- */
         .game-modes-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -692,15 +509,8 @@
             box-shadow: 0 12px 30px rgba(0, 242, 254, 0.25);
         }
 
-        .mode-card:hover .mode-card-bg {
-            transform: scale(1.08);
-        }
-
-        .mode-content {
-            position: relative;
-            z-index: 2;
-        }
-
+        .mode-card:hover .mode-card-bg { transform: scale(1.08); }
+        .mode-content { position: relative; z-index: 2; }
         .mode-tag {
             display: inline-block;
             padding: 4px 10px;
@@ -712,19 +522,9 @@
             margin-bottom: 8px;
             text-transform: uppercase;
         }
+        .mode-title { font-size: 20px; font-weight: 800; }
+        .mode-desc { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
-        .mode-title {
-            font-size: 20px;
-            font-weight: 800;
-        }
-
-        .mode-desc {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        /* 快速匹配巨型区域 */
         .matchmaking-banner {
             background: linear-gradient(135deg, rgba(0, 242, 254, 0.1), rgba(127, 0, 255, 0.1));
             border: 1px solid var(--border-highlight);
@@ -735,17 +535,6 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 20px;
-        }
-
-        .banner-text h3 {
-            font-size: 22px;
-            font-weight: 800;
-        }
-
-        .banner-text p {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 4px;
         }
 
         .btn-start-match {
@@ -761,119 +550,239 @@
             transition: var(--transition-smooth);
         }
 
-        .btn-start-match:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 35px rgba(0, 242, 254, 0.7);
-        }
+        .btn-start-match:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 254, 0.7); }
 
-        /* --- C. 游戏商城 (Store View) --- */
-        .store-filter-bar {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            overflow-x: auto;
-            padding-bottom: 8px;
-        }
-
-        .filter-chip {
-            padding: 8px 18px;
+        /* Room Lobby Sub-Section */
+        .room-section {
             background: var(--bg-glass-card);
             border: 1px solid var(--border-color);
-            border-radius: 20px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+        .room-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .room-actions-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            padding: 10px 18px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
             font-size: 13px;
-            font-weight: 600;
-            color: var(--text-secondary);
+            font-weight: 700;
             cursor: pointer;
-            white-space: nowrap;
             transition: var(--transition-smooth);
         }
 
-        .filter-chip.active, .filter-chip:hover {
+        .btn-secondary:hover {
             background: var(--accent-cyan);
             color: #000;
-            border-color: var(--accent-cyan);
         }
 
-        .store-grid {
+        .rooms-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
         }
 
-        .shop-card {
-            background: var(--bg-glass-card);
+        .room-card {
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             transition: var(--transition-smooth);
-            position: relative;
         }
 
-        .shop-card:hover {
-            border-color: var(--border-highlight);
-            transform: translateY(-4px);
+        .room-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
         }
 
-        .item-preview {
-            height: 140px;
-            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
-            border-radius: var(--radius-sm);
+        .room-card-top {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            font-size: 48px;
         }
 
-        .item-info h4 {
+        .room-id {
+            font-size: 11px;
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .room-status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(0, 230, 118, 0.2);
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .room-name {
             font-size: 15px;
             font-weight: 700;
         }
 
-        .item-info p {
-            font-size: 11px;
+        .room-info-meta {
+            font-size: 12px;
             color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .item-buy-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-top: auto;
-            padding-top: 8px;
         }
 
-        .price-tag {
-            font-size: 14px;
+        /* Active In-Room UI Overlay Panel */
+        .room-view-panel {
+            background: var(--bg-glass-card);
+            border: 1px solid var(--border-highlight);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .room-view-panel.active {
+            display: flex;
+        }
+
+        .player-slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .player-slot {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .player-slot.filled {
+            border-style: solid;
+            border-color: var(--accent-cyan);
+            background: rgba(0, 242, 254, 0.05);
+        }
+
+        .player-slot img {
+            width: 44px; height: 44px; border-radius: 50%;
+        }
+
+        .slot-name { font-size: 12px; font-weight: 700; }
+        .slot-host-badge {
+            position: absolute;
+            top: 6px; right: 6px;
+            font-size: 9px;
+            background: var(--accent-gold);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 8px;
             font-weight: 800;
-            color: var(--accent-gold);
+        }
+
+        /* Account Settings & Shop Grid */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .dashboard-card {
+            background: var(--bg-glass-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card-header {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 14px;
         }
 
-        .btn-buy {
-            padding: 8px 14px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-        }
+        .card-header h3 { font-size: 16px; font-weight: 700; }
 
-        .btn-buy:hover {
-            background: var(--accent-cyan);
-            color: #000;
+        .profile-edit-box { display: flex; align-items: center; gap: 16px; }
+        .avatar-upload { position: relative; cursor: pointer; }
+        .avatar-upload img { width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--accent-cyan); }
+        .avatar-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: var(--transition-smooth); font-size: 10px; color: #fff;
         }
+        .avatar-upload:hover .avatar-overlay { opacity: 1; }
+
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+        .toggle-info h4 { font-size: 14px; font-weight: 600; }
+        .toggle-info p { font-size: 12px; color: var(--text-secondary); }
+
+        .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-tertiary); transition: .3s; border-radius: 34px; border: 1px solid var(--border-color);
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent-cyan); }
+        input:checked + .slider:before { transform: translateX(22px); background-color: #000; }
+
+        .store-filter-bar { display: flex; gap: 12px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
+        .filter-chip {
+            padding: 8px 18px; background: var(--bg-glass-card); border: 1px solid var(--border-color);
+            border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary);
+            cursor: pointer; white-space: nowrap; transition: var(--transition-smooth);
+        }
+        .filter-chip.active, .filter-chip:hover { background: var(--accent-cyan); color: #000; border-color: var(--accent-cyan); }
+
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        .shop-card {
+            background: var(--bg-glass-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: var(--transition-smooth);
+        }
+        .shop-card:hover { border-color: var(--border-highlight); transform: translateY(-4px); }
+        .item-preview { height: 140px; background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 48px; }
+        .item-info h4 { font-size: 15px; font-weight: 700; }
+        .item-info p { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .item-buy-row { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 8px; }
+        .price-tag { font-size: 14px; font-weight: 800; color: var(--accent-gold); display: flex; align-items: center; gap: 4px; }
+        .btn-buy { padding: 8px 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition-smooth); }
+        .btn-buy:hover { background: var(--accent-cyan); color: #000; }
 
         /* ==========================================================================
-           7. 通用 Modal 弹窗 & Toast 系统
+           5. Modals & Notifications
            ========================================================================== */
         .modal-backdrop {
             position: fixed;
@@ -888,10 +797,7 @@
             transition: opacity 0.3s ease;
         }
 
-        .modal-backdrop.active {
-            display: flex;
-            opacity: 1;
-        }
+        .modal-backdrop.active { display: flex; opacity: 1; }
 
         .modal-card {
             background: var(--bg-secondary);
@@ -900,25 +806,18 @@
             width: 90%;
             max-width: 440px;
             padding: 30px;
-            text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.8), var(--shadow-glow);
             transform: scale(0.9);
             transition: transform 0.3s ease;
+            text-align: left;
         }
 
-        .modal-backdrop.active .modal-card {
-            transform: scale(1);
-        }
+        .modal-backdrop.active .modal-card { transform: scale(1); }
 
-        /* 匹配寻找中波浪动画 */
         .radar-spinner {
-            width: 80px; height: 80px;
-            margin: 20px auto;
-            border-radius: 50%;
-            background: rgba(0, 242, 254, 0.1);
-            border: 2px solid var(--accent-cyan);
-            position: relative;
-            animation: pulse 1.5s infinite;
+            width: 80px; height: 80px; margin: 20px auto; border-radius: 50%;
+            background: rgba(0, 242, 254, 0.1); border: 2px solid var(--accent-cyan);
+            position: relative; animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
@@ -927,27 +826,16 @@
             100% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
         }
 
-        /* Toast 提示浮窗 */
         #toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            position: fixed; top: 20px; right: 20px; z-index: 2000;
+            display: flex; flex-direction: column; gap: 10px;
         }
 
         .toast {
-            padding: 12px 20px;
-            background: var(--bg-tertiary);
-            border-left: 4px solid var(--accent-cyan);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 13px;
-            font-weight: 600;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            animation: slideInRight 0.3s ease-out;
+            padding: 12px 20px; background: var(--bg-tertiary);
+            border-left: 4px solid var(--accent-cyan); border-radius: var(--radius-sm);
+            color: var(--text-primary); font-size: 13px; font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: slideInRight 0.3s ease-out;
         }
 
         @keyframes slideInRight {
@@ -958,22 +846,62 @@
 </head>
 <body>
 
-    <!-- 提示框容器 -->
     <div id="toast-container"></div>
 
-    <!-- 弹窗：匹配中 Modal -->
+    <!-- Modal: Matchmaking -->
     <div class="modal-backdrop" id="matchModal">
-        <div class="modal-card">
+        <div class="modal-card" style="text-align: center;">
             <h3 style="font-size: 20px; font-weight: 800;">正在匹配对手...</h3>
             <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">标准模式 · 匹配赛</p>
             <div class="radar-spinner"></div>
-            <p id="matchTimer" style="font-size: 24px; font-weight: 800; color: var(--accent-cyan);">00:03</p>
+            <p id="matchTimer" style="font-size: 24px; font-weight: 800; color: var(--accent-cyan);">00:00</p>
             <button onclick="cancelMatch()" style="margin-top: 20px; padding: 10px 24px; background: rgba(255,255,255,0.1); border: 1px solid var(--border-color); border-radius: 20px; color: #fff; cursor: pointer;">取消匹配</button>
         </div>
     </div>
 
+    <!-- Modal: Create Custom Room -->
+    <div class="modal-backdrop" id="createRoomModal">
+        <div class="modal-card">
+            <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">创建自定义房间</h3>
+            
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label>房间名称</label>
+                <div class="input-wrapper">
+                    <input type="text" id="newRoomName" placeholder="例如：训练房 / 1v1速来">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label>游戏模式</label>
+                <div class="input-wrapper">
+                    <select id="newRoomMode">
+                        <option value="经典竞技">经典竞技 (5v5)</option>
+                        <option value="死斗大乱斗">死斗大乱斗</option>
+                        <option value="1v1 狙击单挑">1v1 狙击单挑</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>最大玩家人数</label>
+                <div class="input-wrapper">
+                    <select id="newRoomMax">
+                        <option value="2">2 人</option>
+                        <option value="4">4 人</option>
+                        <option value="10" selected>10 人</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="closeModal('createRoomModal')">取消</button>
+                <button class="btn-primary" style="width: auto; padding: 10px 24px;" onclick="confirmCreateRoom()">创建并进入</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==========================================================================
-       STAGE 1: 登录 / 注册界面
+       STAGE 1: Login / Register
        ========================================================================== -->
     <div id="stage-login" class="app-stage active">
         <div class="login-box">
@@ -1005,11 +933,10 @@
     </div>
 
     <!-- ==========================================================================
-       STAGE 2: 主游戏大厅 (含底部/左侧响应式导航)
+       STAGE 2: Main Lobby
        ========================================================================== -->
     <div id="stage-lobby" class="app-stage">
         
-        <!-- 侧边栏 / 底部导航栏 -->
         <aside class="app-sidebar">
             <div class="brand-logo">
                 <div class="logo-mark">CS</div>
@@ -1043,10 +970,8 @@
             </div>
         </aside>
 
-        <!-- 主内容大厅展示区 -->
         <main class="app-content">
             
-            <!-- 头部公用栏：标题与代币 -->
             <header class="content-header">
                 <div class="page-title">
                     <h2 id="currentViewTitle">开始游戏</h2>
@@ -1065,13 +990,9 @@
                 </div>
             </header>
 
-            <!-- ----------------------------------------------------------------
-               VIEW 1: 账户设置 (Account Settings)
-               ---------------------------------------------------------------- -->
+            <!-- VIEW 1: Account Settings -->
             <section id="view-account" class="view-panel">
                 <div class="settings-grid">
-                    
-                    <!-- 个人档案设置 -->
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h3>👤 个人档案 (Profile)</h3>
@@ -1093,12 +1014,10 @@
                         <button class="btn-primary" style="padding:10px; font-size:13px;" onclick="saveProfile()">保存档案更改</button>
                     </div>
 
-                    <!-- 偏好与系统设置 -->
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h3>⚙️ 偏好设置 (Preferences)</h3>
                         </div>
-                        
                         <div class="toggle-row">
                             <div class="toggle-info">
                                 <h4>高帧率模式 (60/120 FPS)</h4>
@@ -1109,7 +1028,6 @@
                                 <span class="slider"></span>
                             </label>
                         </div>
-
                         <div class="toggle-row">
                             <div class="toggle-info">
                                 <h4>全局主音量 (SFX)</h4>
@@ -1120,20 +1038,8 @@
                                 <span class="slider"></span>
                             </label>
                         </div>
-
-                        <div class="toggle-row">
-                            <div class="toggle-info">
-                                <h4>拒绝陌生人组队邀请</h4>
-                                <p>自动屏蔽非好友的房间呼叫</p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
                     </div>
 
-                    <!-- API 端点设置 (兼容自定义配置) -->
                     <div class="dashboard-card">
                         <div class="card-header">
                             <h3>🌐 节点与 API 端点 (Server Config)</h3>
@@ -1146,16 +1052,12 @@
                         </div>
                         <button class="btn-primary" style="padding:10px; font-size:13px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);" onclick="showToast('服务器节点配置已成功同步！')">更新 API 节点</button>
                     </div>
-
                 </div>
             </section>
 
-            <!-- ----------------------------------------------------------------
-               VIEW 2: 开始游戏 (Game Modes)
-               ---------------------------------------------------------------- -->
+            <!-- VIEW 2: Game Modes & Rooms -->
             <section id="view-game" class="view-panel active">
                 
-                <!-- 快速匹配横幅 -->
                 <div class="matchmaking-banner">
                     <div class="banner-text">
                         <h3>排位竞技赛 - S4 赛季</h3>
@@ -1164,11 +1066,9 @@
                     <button class="btn-start-match" onclick="startMatchmaking()">开始匹配</button>
                 </div>
 
-                <h3 style="margin: 30px 0 16px 0; font-size: 18px; font-weight: 800;">游戏模式 (Game Modes)</h3>
+                <h3 style="margin: 30px 0 16px 0; font-size: 18px; font-weight: 800;">快速模式 (Modes)</h3>
 
-                <!-- 模式选择网格 -->
                 <div class="game-modes-grid">
-                    
                     <div class="mode-card" onclick="startMatchmaking()">
                         <img class="mode-card-bg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600" alt="mode">
                         <div class="mode-content">
@@ -1186,25 +1086,49 @@
                             <div class="mode-desc">无限复活，率先达成50击杀者获胜</div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="mode-card" onclick="showToast('自定义房间大厅正在构建中...')">
-                        <img class="mode-card-bg" src="https://images.unsplash.com/photo-1538481199705-c710c4e965fc?q=80&w=600" alt="mode">
-                        <div class="mode-content">
-                            <span class="mode-tag" style="background: var(--accent-purple); color:#fff;">自定义</span>
-                            <div class="mode-title">自定义房间</div>
-                            <div class="mode-desc">创建专属房间，与好友展开对决</div>
+                <!-- Custom Rooms Section -->
+                <div class="room-section" id="roomLobbySection">
+                    <div class="room-section-header">
+                        <div>
+                            <h3 style="font-size: 18px; font-weight: 800;">自定义房间大厅 (Custom Rooms)</h3>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">加入现有房间或创建房间邀请好友</p>
+                        </div>
+                        <div class="room-actions-bar">
+                            <input type="text" id="searchRoomInput" placeholder="搜索房间ID/名称..." onkeyup="filterRooms()" style="padding: 8px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: #fff; font-size: 13px; outline: none;">
+                            <button class="btn-secondary" onclick="openModal('createRoomModal')">+ 创建房间</button>
                         </div>
                     </div>
 
+                    <div class="rooms-grid" id="roomsListGrid">
+                        <!-- Dynamically Rendered -->
+                    </div>
                 </div>
+
+                <!-- Active In-Room View Panel -->
+                <div class="room-view-panel" id="activeRoomPanel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                        <div>
+                            <span style="font-size: 12px; color: var(--accent-cyan); font-weight: 700;" id="activeRoomId">ROOM #8821</span>
+                            <h3 style="font-size: 22px; font-weight: 800; margin-top: 2px;" id="activeRoomTitle">高战练习房</h3>
+                        </div>
+                        <button class="btn-secondary" style="border-color: var(--accent-red); color: var(--accent-red);" onclick="leaveCurrentRoom()">退出房间</button>
+                    </div>
+
+                    <div class="player-slots-grid" id="playerSlotsContainer">
+                        <!-- Dynamically Rendered -->
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
+                        <button class="btn-primary" style="width: auto; padding: 12px 36px; font-size: 16px;" onclick="showToast('准备就绪，正在启动游戏...')">开始对局</button>
+                    </div>
+                </div>
+
             </section>
 
-            <!-- ----------------------------------------------------------------
-               VIEW 3: 游戏商城 (Game Store)
-               ---------------------------------------------------------------- -->
+            <!-- VIEW 3: Store -->
             <section id="view-shop" class="view-panel">
-                
-                <!-- 分类筛选 Bar -->
                 <div class="store-filter-bar">
                     <div class="filter-chip active" onclick="filterShop('all', this)">全部道具</div>
                     <div class="filter-chip" onclick="filterShop('skin', this)">武器皮肤</div>
@@ -1212,9 +1136,8 @@
                     <div class="filter-chip" onclick="filterShop('pass', this)">赛季通行证</div>
                 </div>
 
-                <!-- 商品列表网格 -->
                 <div class="store-grid" id="shopGrid">
-                    <!-- 由 JS 动态渲染 -->
+                    <!-- Dynamically Rendered -->
                 </div>
             </section>
 
@@ -1222,12 +1145,9 @@
     </div>
 
     <!-- ==========================================================================
-       8. 逻辑交互脚本 (JavaScript Core Logic)
+       6. JavaScript Core Logic
        ========================================================================== -->
     <script>
-        // ------------------------------------------------------------------
-        // 全局状态管理 (State Management)
-        // ------------------------------------------------------------------
         const state = {
             user: {
                 username: "Ace_Pilot_99",
@@ -1237,28 +1157,28 @@
             },
             currentTab: 'game',
             matchTimerInterval: null,
-            matchSeconds: 0
+            matchSeconds: 0,
+            activeRoom: null, // Holds current joined room object
+            rooms: [
+                { id: 1024, name: "5v5 爆破对决", mode: "经典竞技", host: "Shadow_Ninja", current: 3, max: 10 },
+                { id: 3088, name: "1v1 练枪速来", mode: "1v1 狙击单挑", host: "Sniper_God", current: 1, max: 2 },
+                { id: 7752, name: "死斗乱斗房", mode: "死斗大乱斗", host: "Cyber_Punk", current: 6, max: 10 }
+            ]
         };
 
-        // 模拟商品数据
         const shopProducts = [
             { id: 1, name: "霓虹风暴 - AK47", type: "skin", price: 1800, icon: "🔫", desc: "赛博朋克限定光束涂装" },
             { id: 2, name: "虚空之刃 - 战术刀", type: "skin", price: 3200, icon: "🗡️", desc: "附带暗紫粒子挥砍特效" },
             { id: 3, name: "零号特工 - 幻影", type: "character", price: 5800, icon: "🤖", desc: "具有独立局内语音与动作" },
-            { id: 4, name: "S4 赛季金币通行证", type: "pass", price: 1200, icon: "🎫", desc: "解锁超100级专属奖励" },
-            { id: 5, name: "高能经验药水 x10", type: "item", price: 500, icon: "🧪", desc: "加速账号与通行证升级" },
-            { id: 6, name: "量子护盾徽章", type: "item", price: 800, icon: "🛡️", desc: "排位失败时不扣除胜点" }
+            { id: 4, name: "S4 赛季金币通行证", type: "pass", price: 1200, icon: "🎫", desc: "解锁超100级专属奖励" }
         ];
 
-        // ------------------------------------------------------------------
-        // 初始化与视图控制 (View Routing)
-        // ------------------------------------------------------------------
         window.onload = () => {
             renderShopItems('all');
+            renderRoomList();
             updateUserUI();
         };
 
-        // 登录逻辑
         function handleLogin() {
             const usernameInput = document.getElementById('loginUsername').value.trim();
             if (!usernameInput) {
@@ -1270,9 +1190,7 @@
             state.user.avatarSeed = usernameInput;
             updateUserUI();
 
-            // 界面切换：隐藏登录页，显示大厅
             document.getElementById('stage-login').classList.remove('active');
-            
             setTimeout(() => {
                 document.getElementById('stage-login').style.display = 'none';
                 const lobby = document.getElementById('stage-lobby');
@@ -1283,28 +1201,20 @@
             showToast(`欢迎回来，${state.user.username}！`);
         }
 
-        // 视图 Tab 切换
         function switchTab(tabName) {
             state.currentTab = tabName;
-
-            // 1. 更新 Nav 选项高亮
             const navItems = document.querySelectorAll('.nav-item');
             const tabMap = { 'account': 0, 'game': 1, 'shop': 2 };
             
             navItems.forEach((item, index) => {
-                if (index === tabMap[tabName]) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
+                if (index === tabMap[tabName]) item.classList.add('active');
+                else item.classList.remove('active');
             });
 
-            // 2. 切换主 View 面板
             const panels = document.querySelectorAll('.view-panel');
             panels.forEach(p => p.classList.remove('active'));
             document.getElementById(`view-${tabName}`).classList.add('active');
 
-            // 3. 更新 Header 标题
             const titles = {
                 'account': { title: "账户设置", sub: "管理个人资料、节点与音效偏好" },
                 'game': { title: "开始游戏", sub: "选择竞技模式，随时开启即时对战" },
@@ -1314,17 +1224,157 @@
             document.getElementById('currentViewSubtitle').textContent = titles[tabName].sub;
         }
 
-        // ------------------------------------------------------------------
-        // 账户设置相关 (Account Actions)
-        // ------------------------------------------------------------------
+        // --- Room Management Logic ---
+        function renderRoomList(filterKeyword = "") {
+            const grid = document.getElementById('roomsListGrid');
+            grid.innerHTML = '';
+
+            const filtered = state.rooms.filter(r => 
+                r.name.toLowerCase().includes(filterKeyword.toLowerCase()) || 
+                r.id.toString().includes(filterKeyword)
+            );
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">未找到匹配的房间</div>`;
+                return;
+            }
+
+            filtered.forEach(room => {
+                const card = document.createElement('div');
+                card.className = 'room-card';
+                card.innerHTML = `
+                    <div class="room-card-top">
+                        <span class="room-id">#${room.id}</span>
+                        <span class="room-status">等待中</span>
+                    </div>
+                    <div class="room-name">${room.name}</div>
+                    <div class="room-info-meta">
+                        <span>模式: ${room.mode}</span>
+                        <span>人数: ${room.current}/${room.max}</span>
+                    </div>
+                    <button class="btn-primary" style="margin-top: 6px; padding: 8px; font-size: 12px;" onclick="joinRoom(${room.id})">加入房间</button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterRooms() {
+            const keyword = document.getElementById('searchRoomInput').value.trim();
+            renderRoomList(keyword);
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function confirmCreateRoom() {
+            const name = document.getElementById('newRoomName').value.trim() || `${state.user.username}的房间`;
+            const mode = document.getElementById('newRoomMode').value;
+            const max = parseInt(document.getElementById('newRoomMax').value);
+
+            const newRoom = {
+                id: Math.floor(1000 + Math.random() * 9000),
+                name: name,
+                mode: mode,
+                host: state.user.username,
+                current: 1,
+                max: max
+            };
+
+            state.rooms.unshift(newRoom);
+            renderRoomList();
+            closeModal('createRoomModal');
+            
+            // Auto enter newly created room
+            enterRoomView(newRoom);
+            showToast(`成功创建房间 #${newRoom.id}`);
+        }
+
+        function joinRoom(roomId) {
+            const room = state.rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            if (room.current >= room.max) {
+                showToast("❌ 房间人数已满！");
+                return;
+            }
+
+            room.current++;
+            renderRoomList();
+            enterRoomView(room);
+            showToast(`已加入房间 #${room.id}`);
+        }
+
+        function enterRoomView(room) {
+            state.activeRoom = room;
+
+            document.getElementById('roomLobbySection').style.display = 'none';
+            const roomPanel = document.getElementById('activeRoomPanel');
+            roomPanel.classList.add('active');
+
+            document.getElementById('activeRoomId').textContent = `ROOM #${room.id} (${room.mode})`;
+            document.getElementById('activeRoomTitle').textContent = room.name;
+
+            renderPlayerSlots(room);
+        }
+
+        function renderPlayerSlots(room) {
+            const container = document.getElementById('playerSlotsContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < room.max; i++) {
+                const slot = document.createElement('div');
+                
+                if (i === 0) {
+                    // Host slot
+                    slot.className = 'player-slot filled';
+                    const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${room.host}`;
+                    slot.innerHTML = `
+                        <span class="slot-host-badge">房主</span>
+                        <img src="${avatarUrl}" alt="avatar">
+                        <span class="slot-name">${room.host}</span>
+                    `;
+                } else if (i < room.current) {
+                    // Joined player slot
+                    slot.className = 'player-slot filled';
+                    const seed = `Player_${i}`;
+                    slot.innerHTML = `
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${seed}" alt="avatar">
+                        <span class="slot-name">${i === 1 && room.host !== state.user.username ? state.user.username : '玩家_' + i}</span>
+                    `;
+                } else {
+                    // Empty slot
+                    slot.className = 'player-slot';
+                    slot.innerHTML = `<span style="font-size: 20px; color: var(--text-muted);">+</span><span style="font-size: 11px; color: var(--text-muted);">空槽位</span>`;
+                }
+
+                container.appendChild(slot);
+            }
+        }
+
+        function leaveCurrentRoom() {
+            if (state.activeRoom) {
+                state.activeRoom.current = Math.max(1, state.activeRoom.current - 1);
+                state.activeRoom = null;
+            }
+
+            document.getElementById('activeRoomPanel').classList.remove('active');
+            document.getElementById('roomLobbySection').style.display = 'block';
+            renderRoomList();
+            showToast("已退出房间");
+        }
+
+        // --- Account & Utility Actions ---
         function updateUserUI() {
             const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${state.user.avatarSeed}`;
-            
             document.getElementById('sidebarUsername').textContent = state.user.username;
             document.getElementById('sidebarAvatar').src = avatarUrl;
             document.getElementById('settingsAvatar').src = avatarUrl;
             document.getElementById('inputNickname').value = state.user.username;
-
             document.getElementById('userGold').textContent = state.user.gold.toLocaleString();
             document.getElementById('userDiamond').textContent = state.user.diamond.toLocaleString();
         }
@@ -1341,16 +1391,12 @@
         function changeAvatar() {
             state.user.avatarSeed = Math.random().toString(36).substring(7);
             updateUserUI();
-            showToast("随机生成了新头像！");
+            showToast("已刷新头像！");
         }
 
-        // ------------------------------------------------------------------
-        // 匹配系统相关 (Matchmaking Logic)
-        // ------------------------------------------------------------------
         function startMatchmaking() {
             const modal = document.getElementById('matchModal');
             modal.classList.add('active');
-            
             state.matchSeconds = 0;
             document.getElementById('matchTimer').textContent = "00:00";
 
@@ -1360,8 +1406,7 @@
                 const min = String(Math.floor(state.matchSeconds / 60)).padStart(2, '0');
                 document.getElementById('matchTimer').textContent = `${min}:${sec}`;
 
-                // 模拟 5 秒后匹配成功
-                if (state.matchSeconds === 5) {
+                if (state.matchSeconds === 4) {
                     cancelMatch();
                     showToast("🎉 匹配成功！准备进入对局...");
                 }
@@ -1373,16 +1418,10 @@
             document.getElementById('matchModal').classList.remove('active');
         }
 
-        // ------------------------------------------------------------------
-        // 商城系统相关 (Store & Commerce Logic)
-        // ------------------------------------------------------------------
         function renderShopItems(filterType) {
             const grid = document.getElementById('shopGrid');
             grid.innerHTML = '';
-
-            const items = filterType === 'all' 
-                ? shopProducts 
-                : shopProducts.filter(i => i.type === filterType);
+            const items = filterType === 'all' ? shopProducts : shopProducts.filter(i => i.type === filterType);
 
             items.forEach(item => {
                 const card = document.createElement('div');
@@ -1417,19 +1456,15 @@
                 updateUserUI();
                 showToast(`购买成功！已获得 ${product.name}`);
             } else {
-                showToast("❌ 金币不足，请先充值或完成对局！");
+                showToast("❌ 金币不足，请先充值！");
             }
         }
 
-        // ------------------------------------------------------------------
-        // Toast 消息浮窗系统
-        // ------------------------------------------------------------------
         function showToast(text) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.textContent = text;
-            
             container.appendChild(toast);
 
             setTimeout(() => {
