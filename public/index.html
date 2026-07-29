@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 多模式全风貌旗舰版</title>
+  <title>CYBER LANDLORD - 全牌型与 AI 对局版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -31,7 +31,6 @@
 
     #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
 
-    /* 侧边栏 Sidebar */
     .sidebar {
       width: 230px; height: 100%;
       background: rgba(8, 12, 23, 0.95); backdrop-filter: blur(16px);
@@ -114,7 +113,7 @@
     .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 260px; overflow-y: auto; margin-bottom: 18px; }
     .shop-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 12px; padding: 12px; text-align: center; }
 
-    /* ===== 自定义 Toast 悬浮通知浮窗系统 (代替原生 alert) ===== */
+    /* Toast 通知 Container */
     .toast-container {
       position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
       z-index: 999; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
@@ -133,15 +132,14 @@
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- 悬浮通知 Toast -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- 侧边栏 Sidebar -->
+    <!-- 侧边栏 -->
     <div class="sidebar hidden" id="main-sidebar">
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">2FA & MULTI-DECK V4.0</p>
+          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">2FA & AI ENGINE V5.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -166,7 +164,7 @@
       </div>
     </div>
 
-    <!-- 主视口面板区 -->
+    <!-- 主试图区 -->
     <div class="main-viewport">
       <div class="turn-tip hidden" id="turn-tip">SYSTEM: WAITING...</div>
 
@@ -191,24 +189,17 @@
         <button class="btn btn-cyber" id="auth-submit-btn" style="width: 100%; margin-top: 6px;" onclick="gameApp.handleAuth()">访问节点</button>
       </div>
 
-      <!-- 2. 多模式建房大厅 (支持2人/3人/5人双副牌) -->
+      <!-- 2. 建房与 AI 单人模式选择大厅 -->
       <div class="view-panel hidden" id="panel-lobby">
-        <div class="panel-title">🎮 游戏模式与匹配</div>
+        <div class="panel-title">🎮 对局模式选择</div>
         
-        <label style="color:#8a99ad; font-size:12px; display:block; text-align:left; margin-bottom:4px;">选择对局人数/人数模式：</label>
-        <select id="room-mode-select" class="input-field" onchange="gameApp.onModeChange()">
-          <option value="2">二人 PK 模式 (1副牌 · 快速决斗)</option>
-          <option value="3">三人经典斗地主 (1副牌 · 经典斗地主)</option>
-          <option value="5">五人双副牌模式 (2副牌 · 108张超级大战)</option>
+        <label style="color:#8a99ad; font-size:12px; display:block; text-align:left; margin-bottom:4px;">选择模式类型：</label>
+        <select id="room-mode-select" class="input-field">
+          <option value="2">二人联机 PK 模式 (1副牌 · 2人开局)</option>
+          <option value="3">三人联机经典斗地主 (1副牌 · 3人开局)</option>
+          <option value="5">五人联机双副牌模式 (2副牌 · 5人开局)</option>
+          <option value="AI">🤖 离线单人对战 AI (无需等待/随时开局)</option>
         </select>
-
-        <div id="5p-submode-box" class="hidden" style="margin-bottom: 12px; text-align: left;">
-          <label style="color:#8a99ad; font-size:12px; display:block; margin-bottom:4px;">五人玩法设置：</label>
-          <select id="room-submode-select" class="input-field">
-            <option value="LANDLORD">【2打3阵营斗地主】(2地主对战3农民)</option>
-            <option value="FREE_FOR_ALL">【5人乱斗各打各】(个人独立战)</option>
-          </select>
-        </div>
 
         <input type="text" id="room-input" class="input-field" placeholder="输入/创建房间号 (例如: 888)" value="888" />
         
@@ -218,7 +209,7 @@
         </div>
       </div>
 
-      <!-- 3. 道具商城 -->
+      <!-- 3. 商城面板 -->
       <div class="view-panel hidden" id="panel-shop">
         <div class="panel-title">🛒 赛博装备商城</div>
         <div class="shop-grid" id="shop-grid"></div>
@@ -228,7 +219,7 @@
       <!-- 4. 2FA 设置 -->
       <div class="view-panel hidden" id="panel-2fa">
         <div class="panel-title">🔐 2FA 安全验证绑定</div>
-        <p style="color:#8a99ad; font-size:12px; margin-bottom:10px;">使用 Google / Authenticator App 扫描二维码：</p>
+        <p style="color:#8a99ad; font-size:12px; margin-bottom:10px;">使用 Authenticator App 扫描二维码：</p>
         
         <div id="2fa-setup-box">
           <button class="btn btn-gold" onclick="gameApp.generate2FA()">生成 2FA 密钥</button>
@@ -253,30 +244,66 @@
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // 全功能牌型校验引擎
+    // --- 商业全牌型解析与压牌比对逻辑引擎 ---
     class CardRulesEngine {
       static parseCards(cards) {
         if (!cards || cards.length === 0) return null;
         const sorted = [...cards].sort((a, b) => a.value - b.value);
         const len = sorted.length;
         const values = sorted.map(c => c.value);
+        
         const freq = {};
         values.forEach(v => freq[v] = (freq[v] || 0) + 1);
+        const keys = Object.keys(freq).map(Number).sort((a, b) => a - b);
+        const counts = Object.values(freq);
 
-        if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2 };
-        if (len === 1) return { type: 'SINGLE', value: values[0], length: 1 };
-        if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2 };
-        if (len === 4 && Object.keys(freq).length === 1) return { type: 'BOMB', value: values[0], length: 4 };
+        // 1. 天王炸 (双王)
+        if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2, name: '王炸' };
+        // 2. 单张
+        if (len === 1) return { type: 'SINGLE', value: values[0], length: 1, name: '单张' };
+        // 3. 对子
+        if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2, name: '对子' };
+        // 4. 三张
+        if (len === 3 && counts.length === 1) return { type: 'TRIPLE', value: values[0], length: 3, name: '三张' };
+        // 5. 三带一
+        if (len === 4 && counts.includes(3) && counts.includes(1)) {
+          return { type: 'TRIPLE_ONE', value: keys.find(k => freq[k] === 3), length: 4, name: '三带一' };
+        }
+        // 6. 三带二
+        if (len === 5 && counts.includes(3) && counts.includes(2)) {
+          return { type: 'TRIPLE_PAIR', value: keys.find(k => freq[k] === 3), length: 5, name: '三带二' };
+        }
+        // 7. 炸弹
+        if (len === 4 && counts.length === 1) return { type: 'BOMB', value: values[0], length: 4, name: '炸弹' };
+        // 8. 顺子 (>=5张，连续且最高不超过 A)
+        if (len >= 5 && counts.every(c => c === 1) && values[len - 1] < 15 && (values[len - 1] - values[0] === len - 1)) {
+          return { type: 'STRAIGHT', value: values[len - 1], length: len, name: '顺子' };
+        }
+        // 9. 连对 (>=6张双数)
+        if (len >= 6 && len % 2 === 0 && counts.every(c => c === 2) && values[len - 1] < 15) {
+          if (keys[keys.length - 1] - keys[0] === keys.length - 1) {
+            return { type: 'STRAIGHT_PAIR', value: keys[keys.length - 1], length: len, name: '连对' };
+          }
+        }
+
         return null;
       }
 
+      // 能否压过上家的严密判断算法
       static canBeat(myHand, lastHand) {
-        if (!lastHand) return true;
+        if (!lastHand) return true; // 自由出牌
         if (!myHand) return false;
+
         if (myHand.type === 'KING_BOMB') return true;
         if (lastHand.type === 'KING_BOMB') return false;
         if (myHand.type === 'BOMB' && lastHand.type !== 'BOMB') return true;
-        if (myHand.type === lastHand.type && myHand.length === lastHand.length) return myHand.value > lastHand.value;
+        if (lastHand.type === 'BOMB' && myHand.type !== 'BOMB') return false;
+
+        // 同牌型同张数比权值
+        if (myHand.type === lastHand.type && myHand.length === lastHand.length) {
+          return myHand.value > lastHand.value;
+        }
+
         return false;
       }
     }
@@ -286,8 +313,10 @@
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.authMode = 'login';
+        this.isAIMode = false; // 是否单人 AI 模式
         this.user = null;
         this.myHand = [];
+        this.aiHands = [[], []]; // 两个 AI 的手牌
         this.selectedIndices = new Set();
         this.tableCards = [];
         this.lastPlayedHand = null;
@@ -298,7 +327,6 @@
         requestAnimationFrame(() => this.renderLoop());
       }
 
-      // 自定义悬浮通知 Toast (替换原生 alert)
       showToast(text) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -344,16 +372,6 @@
         }
       }
 
-      onModeChange() {
-        const mode = document.getElementById('room-mode-select').value;
-        const subBox = document.getElementById('5p-submode-box');
-        if (mode === '5') {
-          subBox.classList.remove('hidden');
-        } else {
-          subBox.classList.add('hidden');
-        }
-      }
-
       switchView(viewName) {
         ['panel-lobby', 'panel-shop', 'panel-2fa'].forEach(id => document.getElementById(id).classList.add('hidden'));
         ['nav-lobby', 'nav-shop', 'nav-2fa'].forEach(id => document.getElementById(id).classList.remove('active'));
@@ -393,7 +411,7 @@
 
         if (data.success) {
           if (this.authMode === 'register') {
-            this.showToast('✅ 注册成功！请直接登录');
+            this.showToast('✅ 注册成功！请登录');
             this.switchAuthTab('login');
           } else {
             this.user = data.user;
@@ -404,7 +422,7 @@
 
             socket = io(window.location.origin);
             this.setupSocketListeners();
-            this.showToast(`🎉 欢迎回来，${this.user.username}！`);
+            this.showToast(`🎉 欢迎，${this.user.username}！`);
           }
         } else {
           this.showToast('❌ ' + data.error);
@@ -427,7 +445,7 @@
 
       async verify2FA() {
         const token = document.getElementById('verify-2fa-input').value.trim();
-        if (!token) return this.showToast('请输验证码！');
+        if (!token) return this.showToast('请输入 6 位验证码');
 
         const res = await fetch('/api/user/verify-2fa', {
           method: 'POST',
@@ -498,7 +516,6 @@
           document.getElementById('action-bar').classList.remove('hidden');
           document.getElementById('turn-tip').classList.remove('hidden');
           
-          // 根据房间模式洗牌分发 (支持 1 副或 2 副牌)
           this.dealCards(room.maxPlayers);
           this.updateTurnState(currentTurnSocketId, '');
         });
@@ -524,25 +541,101 @@
 
       createRoom() {
         const mode = document.getElementById('room-mode-select').value;
-        const subMode = document.getElementById('room-submode-select').value;
         const roomId = document.getElementById('room-input').value.trim();
+
+        if (mode === 'AI') {
+          return this.startAIGame(); // 启动 AI 单人模式
+        }
+
         if (!roomId) return this.showToast('请输入房间号！');
-        
-        socket.emit('create_room', { roomId, username: this.user.username, mode, subMode });
+        socket.emit('create_room', { roomId, username: this.user.username, mode });
       }
 
       joinRoom() {
+        const mode = document.getElementById('room-mode-select').value;
+        if (mode === 'AI') return this.startAIGame();
+
         const roomId = document.getElementById('room-input').value.trim();
         if (!roomId) return this.showToast('请输入房间号！');
         socket.emit('join_room', { roomId, username: this.user.username });
       }
 
-      // 洗牌发牌算法：支持 1 副牌 (54张) 或 2 副牌 (108张)
+      // --- AI 单人对局模式引擎 ---
+      startAIGame() {
+        this.isAIMode = true;
+        this.showToast('🤖 已进入离线 AI 练习对局！');
+        document.getElementById('panel-lobby').classList.add('hidden');
+        document.getElementById('main-sidebar').classList.add('hidden');
+        document.getElementById('action-bar').classList.remove('hidden');
+        document.getElementById('turn-tip').classList.remove('hidden');
+
+        // 发 3 人牌 (17张)
+        const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
+        const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+        const deck = [];
+        ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
+        deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
+
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        this.myHand = deck.slice(0, 17).sort((a, b) => b.value - a.value);
+        this.aiHands[0] = deck.slice(17, 34).sort((a, b) => b.value - a.value);
+        this.aiHands[1] = deck.slice(34, 51).sort((a, b) => b.value - a.value);
+
+        this.isMyTurn = true;
+        document.getElementById('btn-play').disabled = false;
+        document.getElementById('btn-pass').disabled = true;
+        document.getElementById('turn-tip').innerText = "👉 轮到你先手出牌！";
+      }
+
+      triggerAITurn(aiIndex) {
+        setTimeout(() => {
+          const hand = this.aiHands[aiIndex];
+          const name = `AI 玩家 ${aiIndex + 1}`;
+
+          if (!this.lastPlayedHand) {
+            // AI 自由出第一张牌（最小单张）
+            const playCard = hand.pop();
+            const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, cardsText: (playCard.suit || '') + playCard.rank };
+            this.lastPlayedHand = handInfo;
+            this.tableCards.push({ username: name, cardsText: handInfo.cardsText });
+          } else {
+            // AI 尝试找一张管得过的单牌
+            const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
+            if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
+              const playCard = hand.splice(validCardIndex, 1)[0];
+              const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, cardsText: (playCard.suit || '') + playCard.rank };
+              this.lastPlayedHand = handInfo;
+              this.tableCards.push({ username: name, cardsText: handInfo.cardsText });
+            } else {
+              this.tableCards.push({ username: name, cardsText: '要不起 / PASS' });
+            }
+          }
+
+          if (hand.length === 0) {
+            this.showToast(`💔 遗憾！${name} 先出完手牌获胜！`);
+            setTimeout(() => window.location.reload(), 2000);
+            return;
+          }
+
+          // 轮转下一个出牌者
+          if (aiIndex === 0) {
+            this.triggerAITurn(1);
+          } else {
+            this.isMyTurn = true;
+            document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-pass').disabled = !this.lastPlayedHand;
+            document.getElementById('turn-tip').innerText = "👉 轮到你的回合，请出牌！";
+          }
+        }, 1000);
+      }
+
       dealCards(maxPlayers) {
         const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
-        
-        // 5人模式使用 2 副牌 (108张)；2/3人使用 1 副牌 (54张)
         const deckCount = (maxPlayers === 5) ? 2 : 1;
         const deck = [];
 
@@ -551,13 +644,11 @@
           deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
         }
 
-        // Fisher-Yates 随机洗牌
         for (let i = deck.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
-        // 5人模式每人发 20 张；2/3人模式每人发 17 张
         const handCount = (maxPlayers === 5) ? 20 : 17;
         this.myHand = deck.slice(0, handCount).sort((a,b) => b.value - a.value);
       }
@@ -573,14 +664,45 @@
         if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return this.showToast('出的牌无法压过上家！');
 
         handInfo.cardsText = selectedCards.map(c => (c.suit || '') + c.rank).join(' ');
-        socket.emit('play_cards', { roomId: this.roomId, handInfo });
 
-        this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
-        this.selectedIndices.clear();
-        if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
+        if (this.isAIMode) {
+          this.tableCards.push({ username: this.user.username, cardsText: handInfo.cardsText });
+          this.lastPlayedHand = handInfo;
+          this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
+          this.selectedIndices.clear();
+
+          if (this.myHand.length === 0) {
+            this.showToast('🎉 恭喜你击败 AI，获得单人局胜利！');
+            setTimeout(() => window.location.reload(), 2000);
+            return;
+          }
+
+          this.isMyTurn = false;
+          document.getElementById('btn-play').disabled = true;
+          document.getElementById('btn-pass').disabled = true;
+          document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
+          this.triggerAITurn(0);
+        } else {
+          socket.emit('play_cards', { roomId: this.roomId, handInfo });
+          this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
+          this.selectedIndices.clear();
+          if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
+        }
       }
 
-      passTurn() { this.selectedIndices.clear(); socket.emit('pass_turn', { roomId: this.roomId }); }
+      passTurn() {
+        this.selectedIndices.clear();
+        if (this.isAIMode) {
+          this.tableCards.push({ username: this.user.username, cardsText: 'PASS / 不出' });
+          this.isMyTurn = false;
+          document.getElementById('btn-play').disabled = true;
+          document.getElementById('btn-pass').disabled = true;
+          document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
+          this.triggerAITurn(0);
+        } else {
+          socket.emit('pass_turn', { roomId: this.roomId });
+        }
+      }
 
       renderLoop() {
         this.ctx.clearRect(0, 0, this.width, this.height);
