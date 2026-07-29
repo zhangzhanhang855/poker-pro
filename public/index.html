@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 彻底修复无法PASS问题版</title>
+  <title>CYBER LANDLORD - 完美出牌逻辑修复版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -137,7 +137,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">PASS FIX V9.0</p>
+          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">FINAL LOGIC MASTER V10.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -237,6 +237,7 @@
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
+    // 严密的牌型解析与比牌引擎
     class CardRulesEngine {
       static parseCards(cards) {
         if (!cards || cards.length === 0) return null;
@@ -268,7 +269,7 @@
       }
 
       static canBeat(myHand, lastHand) {
-        if (!lastHand) return true;
+        if (!lastHand) return true; // 自由出牌，无需比大小
 
         if (myHand.type === 'KING_BOMB') return true;
         if (lastHand.type === 'KING_BOMB') return false;
@@ -293,9 +294,9 @@
         this.myHand = [];
         this.aiHands = [[], []];
         this.selectedIndices = new Set();
-        this.tablePlayedHand = null; 
-        this.lastPlayedHand = null;
-        this.lastPlayedSocketId = null; // 明确记录领头牌的主人 Socket ID
+        
+        this.tablePlayedHand = null; // Canvas 渲染桌面打出的牌
+        this.lastPlayedHand = null;  // 比牌校验数据
         this.isMyTurn = false;
 
         this.initCanvasSize();
@@ -504,34 +505,32 @@
           if (data.isClear) {
             this.tablePlayedHand = null;
             this.lastPlayedHand = null;
-            this.lastPlayedSocketId = null;
           } else if (data.rawCards) {
-            this.tablePlayedHand = data;
-            this.lastPlayedSocketId = data.playerId;
+            // 【核心修复】：更新桌面展示的打牌数据，确保渲染最新玩家出的扑克牌！
+            this.tablePlayedHand = JSON.parse(JSON.stringify(data));
           }
         });
 
         socket.on('error_message', (msg) => this.showToast('⚠️ ' + msg));
       }
 
-      // 【核心修复】：精确定位你是否能按 PASS 按钮！
+      // 【核心复核点】：极其精准的回合与压牌状态判断
       updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
         this.isMyTurn = (socket.id === currentTurnSocketId);
 
-        // 如果桌面上没有压牌，或者领头牌的主人就是你自己（代表其他人都选择 PASS 绕回到了你）
-        const isTableCleared = !lastPlayedHand || (lastPlayedHand && (lastPlayedHand.playerId === socket.id || this.lastPlayedSocketId === socket.id));
+        // 如果服务端传来 lastPlayedHand 为空，或者上一手牌的主人就是你自己（其他人全 PASS 绕回了你）
+        const isTableCleared = !lastPlayedHand || (lastPlayedHand && lastPlayedHand.playerId === socket.id);
 
         if (isTableCleared) {
           this.lastPlayedHand = null;
           this.tablePlayedHand = null;
-          this.lastPlayedSocketId = null;
         } else {
           this.lastPlayedHand = lastPlayedHand;
         }
 
         document.getElementById('btn-play').disabled = !this.isMyTurn;
 
-        // 【彻底解决无法 PASS 问题】：只要是你的回合，且桌面上压着别人的牌，PASS 按钮 100% 允许点击！
+        // 【压牌与 PASS 逻辑固定】：只要是你的回合，且桌面上压着别人的牌，100% 允许按 PASS 按钮！
         const canPass = this.isMyTurn && (this.lastPlayedHand !== null);
         document.getElementById('btn-pass').disabled = !canPass;
 
@@ -598,11 +597,13 @@
           const name = `AI 玩家 ${aiIndex + 1}`;
 
           if (!this.lastPlayedHand) {
+            // AI 自由出牌：出一张最小单牌
             const playCard = hand.pop();
             const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: 'ai_' + aiIndex };
             this.lastPlayedHand = handInfo;
             this.tablePlayedHand = { username: name, rawCards: [playCard] };
           } else {
+            // AI 找牌压过
             const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
             if (validCardIndex !== -1 && this.lastPlayedHand.type === 'SINGLE') {
               const playCard = hand.splice(validCardIndex, 1)[0];
@@ -624,11 +625,15 @@
             this.triggerAITurn(1);
           } else {
             this.isMyTurn = true;
-            this.lastPlayedHand = null; 
-            this.tablePlayedHand = null;
             document.getElementById('btn-play').disabled = false;
-            document.getElementById('btn-pass').disabled = true;
-            document.getElementById('turn-tip').innerText = "👉 所有人全 PASS，你获得自由出牌权！";
+            // 检查是不是所有人都不出绕回给了玩家
+            const canPass = this.lastPlayedHand && this.lastPlayedHand.playerId !== 'me';
+            document.getElementById('btn-pass').disabled = !canPass;
+            document.getElementById('turn-tip').innerText = canPass ? "👉 轮到你压牌！" : "👉 所有人全 PASS，你获得自由出牌权！";
+            if (!canPass) {
+              this.lastPlayedHand = null;
+              this.tablePlayedHand = null;
+            }
           }
         }, 1000);
       }
@@ -655,13 +660,17 @@
 
       sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
 
+      // 【核心修复】：扣手牌与压牌彻底分离，绝不吞牌
       playCards() {
         if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
+        
+        // 拿到玩家选中的手牌对象数组
         const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
         const handInfo = CardRulesEngine.parseCards(selectedCards);
         
         if (!handInfo) return this.showToast('非法的出牌组合！');
 
+        // 比牌比对
         if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) {
           return this.showToast(`出的牌无法压过上家！必须出同牌型更大值的牌。`);
         }
@@ -672,7 +681,9 @@
           handInfo.playerId = 'me';
           this.tablePlayedHand = { username: this.user.username, rawCards: selectedCards };
           this.lastPlayedHand = handInfo;
-          this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
+
+          // 正确扣除手牌
+          this.myHand = this.myHand.filter(c => !selectedCards.includes(c));
           this.selectedIndices.clear();
 
           if (this.myHand.length === 0) {
@@ -687,8 +698,9 @@
           document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
           this.triggerAITurn(0);
         } else {
+          // Socket 联网模式扣手牌并提交服务器
           socket.emit('play_cards', { roomId: this.roomId, handInfo });
-          this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
+          this.myHand = this.myHand.filter(c => !selectedCards.includes(c));
           this.selectedIndices.clear();
           if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
         }
@@ -739,6 +751,7 @@
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
 
+        // 桌面渲染被打出的牌（带名字标签与真实的扑克阵列）
         if (this.tablePlayedHand && this.tablePlayedHand.rawCards) {
           const cards = this.tablePlayedHand.rawCards;
           const total = cards.length;
@@ -751,7 +764,7 @@
           this.ctx.fillStyle = '#facc15';
           this.ctx.font = 'bold 13px sans-serif';
           this.ctx.textAlign = 'center';
-          this.ctx.fillText(`【${this.tablePlayedHand.username}】 出牌：`, this.width / 2, startY - 12);
+          this.ctx.fillText(`【${this.tablePlayedHand.username}】 打出：`, this.width / 2, startY - 12);
 
           cards.forEach((card, i) => {
             const x = startX + i * overlap;
@@ -759,6 +772,7 @@
           });
         }
 
+        // 手牌矩阵渲染
         if (this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = Math.min(60, (this.width - 40) / total);
