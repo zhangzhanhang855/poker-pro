@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>斗地主 - 运营后台管理控制台</title>
+  <title>JR AI 斗地主 - 后台控制台</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; padding: 24px; }
-    .header { margin-bottom: 24px; border-bottom: 1px solid #334155; padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    h1 { font-size: 1.5rem; color: #38bdf8; }
-    .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #334155; }
+    body { background-color: #0b0f19; color: #f8fafc; padding: 24px; }
+    .header { margin-bottom: 24px; border-bottom: 1px solid #1e293b; padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 1.6rem; color: #38bdf8; font-weight: 800; }
+    .card { background: #131c2e; border-radius: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #1e293b; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     h2 { font-size: 1.1rem; color: #facc15; margin-bottom: 16px; }
-    
+
     table { width: 100%; border-collapse: collapse; text-align: left; }
-    th, td { padding: 12px; border-bottom: 1px solid #334155; font-size: 0.9rem; }
-    th { background: #0f172a; color: #94a3b8; }
-    
-    input, select { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-right: 8px; margin-bottom: 8px; }
-    button { padding: 8px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; background: #0284c7; color: #fff; }
+    th, td { padding: 12px 16px; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
+    th { background: #0b0f19; color: #94a3b8; }
+
+    input, select { padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; background: #0b0f19; color: #fff; margin-right: 8px; margin-bottom: 8px; outline: none; }
+    button { padding: 8px 16px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; background: #0284c7; color: #fff; }
     button:hover { background: #0369a1; }
     .btn-danger { background: #dc2626; }
     .btn-danger:hover { background: #b91c1c; }
@@ -26,44 +26,41 @@
 <body>
 
   <div class="header">
-    <h1>⚙️ 斗地主游戏 - 后台管理控制台</h1>
-    <button onclick="loadData()">🔄 刷新数据</button>
+    <h1>⚙️ JR AI 斗地主 - 商业管理控制台</h1>
+    <button onclick="loadData()">🔄 刷新最新数据</button>
   </div>
 
-  <!-- 1. 玩家金币管理卡片 -->
   <div class="card">
-    <h2>👥 玩家资产管理 (MongoDB Atlas)</h2>
+    <h2>👥 注册玩家列表 (MongoDB Atlas)</h2>
     <table>
       <thead>
         <tr>
           <th>用户名</th>
-          <th>当前金币</th>
+          <th>资产金币</th>
           <th>注册时间</th>
-          <th>已装备皮肤</th>
-          <th>操作（快捷改币）</th>
+          <th>使用皮肤</th>
+          <th>快捷资产管理</th>
         </tr>
       </thead>
       <tbody id="user-table-body">
-        <tr><td colspan="5">加载中...</td></tr>
+        <tr><td colspan="5">数据加载中...</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- 2. 商城道具上架管理卡片 -->
   <div class="card">
-    <h2>🛒 商城道具上架 / 下架管理</h2>
-    
-    <div style="margin-bottom: 16px; background: #0f172a; padding: 16px; border-radius: 8px;">
-      <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #38bdf8;">新增上架道具：</h3>
+    <h2>🛒 商城道具上架管理</h2>
+    <div style="margin-bottom: 16px; background: #0b0f19; padding: 16px; border-radius: 10px;">
+      <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #38bdf8;">新增上架商品：</h3>
       <input type="text" id="add-id" placeholder="商品ID (如: skin_red)" />
-      <input type="text" id="add-name" placeholder="商品名称 (如: 经典红牌背)" />
+      <input type="text" id="add-name" placeholder="名称 (如: 极光红牌背)" />
       <select id="add-type">
         <option value="SKIN">SKIN (牌背皮肤)</option>
         <option value="AVATAR">AVATAR (头像框)</option>
       </select>
       <input type="number" id="add-price" placeholder="价格 (金币)" />
-      <input type="text" id="add-icon" placeholder="图标Emoji (如: 🎴)" />
-      <input type="text" id="add-desc" placeholder="商品描述" style="width: 250px;" />
+      <input type="text" id="add-icon" placeholder="Emoji图标 (如: 🎴)" />
+      <input type="text" id="add-desc" placeholder="简短描述" style="width: 200px;" />
       <button onclick="addItem()">确认上架</button>
     </div>
 
@@ -80,14 +77,13 @@
         </tr>
       </thead>
       <tbody id="shop-table-body">
-        <tr><td colspan="7">加载中...</td></tr>
+        <tr><td colspan="7">数据加载中...</td></tr>
       </tbody>
     </table>
   </div>
 
   <script>
     async function loadData() {
-      // 1. 加载用户列表
       const resUsers = await fetch('/api/admin/users');
       const dataUsers = await resUsers.json();
       if (dataUsers.success) {
@@ -97,7 +93,7 @@
             <td><strong>${u.username}</strong></td>
             <td style="color:#facc15; font-weight:bold;">🪙 ${u.coins}</td>
             <td>${new Date(u.createdAt).toLocaleString()}</td>
-            <td>${u.equippedCardSkin || '默认'}</td>
+            <td><code>${u.equippedCardSkin || 'default'}</code></td>
             <td>
               <button onclick="updateCoins('${u.username}', 1000)">+1000金币</button>
               <button class="btn-danger" onclick="updateCoins('${u.username}', -500)">-500金币</button>
@@ -106,7 +102,6 @@
         `).join('');
       }
 
-      // 2. 加载商城道具列表
       const resShop = await fetch('/api/shop/items');
       const dataShop = await resShop.json();
       if (dataShop.success) {
@@ -134,9 +129,7 @@
         body: JSON.stringify({ username, amount })
       });
       const data = await res.json();
-      if (data.success) {
-        loadData();
-      }
+      if (data.success) loadData();
     }
 
     async function addItem() {
@@ -147,7 +140,7 @@
       const icon = document.getElementById('add-icon').value.trim() || '🎁';
       const description = document.getElementById('add-desc').value.trim();
 
-      if (!itemId || !name || !price) return alert('请填全基础信息');
+      if (!itemId || !name || !price) return alert('信息填写不完整');
 
       const res = await fetch('/api/admin/add-item', {
         method: 'POST',
@@ -156,10 +149,8 @@
       });
       const data = await res.json();
       if (data.success) {
-        alert('商品上架成功！');
+        alert('上架成功！');
         loadData();
-      } else {
-        alert(data.error);
       }
     }
 
@@ -167,9 +158,7 @@
       if (!confirm(`确定下架商品 ${itemId} 吗？`)) return;
       const res = await fetch(`/api/admin/delete-item/${itemId}`, { method: 'DELETE' });
       const data = await res.json();
-      if (data.success) {
-        loadData();
-      }
+      if (data.success) loadData();
     }
 
     window.onload = loadData;
