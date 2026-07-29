@@ -3,35 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>欢乐斗地主 - 完整管牌规则版</title>
+  <title>欢乐斗地主 - 全功能系统版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
     html, body { width: 100%; height: 100%; overflow: hidden; background-color: #0b0e14; display: flex; justify-content: center; align-items: center; }
     #game-container { position: relative; width: 100vw; height: 100vh; max-width: 1280px; max-height: 720px; background: radial-gradient(circle at 50% 40%, #1e3a5f 0%, #0d1b2a 100%); overflow: hidden; }
     #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
     .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; }
     .hidden { display: none !important; }
+
     .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
     .user-profile { display: flex; align-items: center; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 215, 0, 0.3); padding: 4px 12px; border-radius: 20px; }
-    .avatar-frame { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ff8c00); display: flex; justify-content: center; align-items: center; font-weight: bold; color: #000; margin-right: 8px; font-size: 14px; }
+    .avatar-frame { font-size: 20px; margin-right: 8px; }
     .user-name { color: #fff; font-size: 12px; font-weight: bold; }
     .user-coins { color: #facc15; font-size: 11px; font-weight: bold; }
-    .room-badge { background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); padding: 6px 12px; border-radius: 16px; color: #38bdf8; font-size: 12px; font-weight: bold; }
-    .btn { padding: 10px 20px; border-radius: 20px; border: none; font-size: 14px; font-weight: bold; cursor: pointer; outline: none; transition: transform 0.1s ease; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); pointer-events: auto; }
+
+    .nav-buttons { display: flex; gap: 8px; pointer-events: auto; }
+    .btn { padding: 8px 16px; border-radius: 20px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; transition: transform 0.1s ease; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); pointer-events: auto; }
     .btn:active { transform: scale(0.92); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
     .btn-gold { background: linear-gradient(180deg, #ffe066 0%, #f59e0b 100%); color: #78350f; }
     .btn-blue { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color: #fff; }
     .btn-green { background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%); color: #fff; }
+    .btn-purple { background: linear-gradient(180deg, #c084fc 0%, #9333ea 100%); color: #fff; }
     .btn-dark { background: linear-gradient(180deg, #64748b 0%, #334155 100%); color: #fff; }
+
     .action-bar { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 20; }
     .turn-tip { position: absolute; bottom: 170px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); border: 1px solid #facc15; padding: 6px 16px; border-radius: 20px; color: #facc15; font-weight: bold; font-size: 13px; pointer-events: none; }
-    .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 100; display: flex; justify-content: center; align-items: center; pointer-events: auto; }
-    .modal-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 20px; padding: 24px; width: 85%; max-width: 380px; text-align: center; }
+
+    .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 100; display: flex; justify-content: center; align-items: center; pointer-events: auto; }
+    .modal-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 20px; padding: 24px; width: 90%; max-width: 400px; text-align: center; }
     .modal-title { font-size: 20px; color: #facc15; margin-bottom: 16px; font-weight: bold; }
-    .input-field { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.9); color: #fff; font-size: 15px; margin-bottom: 16px; outline: none; }
-    .settlement-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.95); border: 2px solid #facc15; border-radius: 20px; padding: 20px 32px; text-align: center; z-index: 200; pointer-events: auto; }
+    .input-field { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.9); color: #fff; font-size: 14px; margin-bottom: 12px; outline: none; }
+
+    /* 商城列表网格 */
+    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 240px; overflow-y: auto; margin-bottom: 16px; text-align: left; }
+    .shop-item-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; text-align: center; }
+    .shop-item-icon { font-size: 28px; margin-bottom: 4px; }
+    .shop-item-name { color: #fff; font-size: 13px; font-weight: bold; }
+    .shop-item-price { color: #facc15; font-size: 12px; margin: 4px 0; }
   </style>
 </head>
 <body>
@@ -42,15 +53,16 @@
     <div class="ui-layer">
       <div class="top-bar">
         <div class="user-profile">
-          <div class="avatar-frame">官</div>
+          <div class="avatar-frame" id="my-avatar">👑</div>
           <div>
             <div class="user-name" id="my-name">未登录</div>
             <div class="user-coins">🪙 <span id="my-coins">0</span></div>
           </div>
         </div>
 
-        <div class="room-badge hidden" id="room-badge">
-          房间号: <span id="room-id-text">-</span> | 人数: <span id="player-count">0</span>/2
+        <div class="nav-buttons hidden" id="lobby-nav">
+          <button class="btn btn-purple" onclick="gameApp.openShop()">🛒 商城</button>
+          <button class="btn btn-dark" onclick="gameApp.openSettings()">⚙️ 设置</button>
         </div>
       </div>
 
@@ -63,45 +75,62 @@
       </div>
     </div>
 
-    <!-- 登录 -->
-    <div class="modal-overlay" id="login-modal">
+    <!-- 1. 登录/注册弹窗 -->
+    <div class="modal-overlay" id="auth-modal">
       <div class="modal-card">
-        <div class="modal-title">斗地主 - 2人竞技版</div>
-        <input type="text" id="username-input" class="input-field" placeholder="请输入玩家昵称..." />
-        <button class="btn btn-gold" style="width: 100%;" onclick="gameApp.login()">进入大厅</button>
+        <div class="modal-title" id="auth-title">账号登录</div>
+        <input type="text" id="auth-username" class="input-field" placeholder="用户名" />
+        <input type="password" id="auth-password" class="input-field" placeholder="密码" />
+        <div style="display: flex; gap: 10px; margin-top: 8px;">
+          <button class="btn btn-gold" style="flex:1" onclick="gameApp.handleAuth('login')">登录</button>
+          <button class="btn btn-dark" style="flex:1" onclick="gameApp.handleAuth('register')">注册新账号</button>
+        </div>
       </div>
     </div>
 
-    <!-- 大厅 -->
+    <!-- 2. 大厅与模式选择 -->
     <div class="modal-overlay hidden" id="lobby-modal">
       <div class="modal-card">
-        <div class="modal-title">游戏大厅 (二人PK)</div>
+        <div class="modal-title">游戏大厅</div>
         <input type="text" id="room-input" class="input-field" placeholder="输入房间号 (如: 888)" value="888" />
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
           <button class="btn btn-blue" style="flex: 1;" onclick="gameApp.createRoom()">创建房间</button>
           <button class="btn btn-green" style="flex: 1;" onclick="gameApp.joinRoom()">加入房间</button>
         </div>
       </div>
     </div>
 
-    <!-- 结算 -->
-    <div class="settlement-panel hidden" id="settlement-modal">
-      <h2 id="settlement-title" style="color:#4ade80; margin-bottom:10px;">对局结束</h2>
-      <p id="settlement-desc" style="color:#cbd5e1; margin-bottom:16px;">金币结算中...</p>
-      <button class="btn btn-gold" onclick="gameApp.backToLobby()">返回大厅</button>
+    <!-- 3. 设置弹窗 -->
+    <div class="modal-overlay hidden" id="settings-modal">
+      <div class="modal-card">
+        <div class="modal-title">⚙️ 账号设置</div>
+        <input type="text" id="set-avatar" class="input-field" placeholder="自定义头像表情 (如: 🤖, 🐉, 👑)" />
+        <input type="password" id="set-new-password" class="input-field" placeholder="修改新密码 (选填)" />
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-gold" style="flex: 1;" onclick="gameApp.saveSettings()">保存设置</button>
+          <button class="btn btn-dark" style="flex: 1;" onclick="gameApp.closeModal('settings-modal')">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 商城弹窗 -->
+    <div class="modal-overlay hidden" id="shop-modal">
+      <div class="modal-card">
+        <div class="modal-title">🛒 游戏道具商城</div>
+        <div class="shop-grid" id="shop-grid"></div>
+        <button class="btn btn-dark" style="width: 100%;" onclick="gameApp.closeModal('shop-modal')">返回大厅</button>
+      </div>
     </div>
   </div>
 
   <script>
-    const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
-
+    let socket = null;
     const CARD_SUITS = { SPADE: '♠', HEART: '♥', CLUB: '♣', DIAMOND: '♦' };
     const RANK_VALUES = {
       '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // --- 核心比牌与牌型识别引擎 ---
     class CardRulesEngine {
       static parseCards(cards) {
         if (!cards || cards.length === 0) return null;
@@ -110,35 +139,21 @@
         const values = sorted.map(c => c.value);
         const counts = {};
         values.forEach(v => counts[v] = (counts[v] || 0) + 1);
-        const cValues = Object.values(counts);
 
         if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2 };
         if (len === 1) return { type: 'SINGLE', value: values[0], length: 1 };
         if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2 };
-        if (len === 3 && cValues.length === 1) return { type: 'TRIPLE', value: values[0], length: 3 };
-        if (len === 4 && cValues.length === 1) return { type: 'BOMB', value: values[0], length: 4 };
-
+        if (len === 4 && Object.keys(counts).length === 1) return { type: 'BOMB', value: values[0], length: 4 };
         return null;
       }
 
-      // 压牌/管牌比对规则计算引擎
       static canBeat(myHand, lastHand) {
-        if (!lastHand || lastHand.playerId === socket.id) return true; // 自由出牌权限
+        if (!lastHand) return true;
         if (!myHand) return false;
-
-        // 王炸无敌
         if (myHand.type === 'KING_BOMB') return true;
         if (lastHand.type === 'KING_BOMB') return false;
-
-        // 炸弹压普通牌
         if (myHand.type === 'BOMB' && lastHand.type !== 'BOMB') return true;
-        if (lastHand.type === 'BOMB' && myHand.type !== 'BOMB') return false;
-
-        // 同牌型比大小（必须张数相同，且核心权值 strictly 大于上家）
-        if (myHand.type === lastHand.type && myHand.length === lastHand.length) {
-          return myHand.value > lastHand.value;
-        }
-
+        if (myHand.type === lastHand.type && myHand.length === lastHand.length) return myHand.value > lastHand.value;
         return false;
       }
     }
@@ -148,18 +163,14 @@
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.user = null;
-        this.roomId = null;
         this.myHand = [];
         this.selectedIndices = new Set();
-        this.players = [];
         this.tableCards = [];
-        this.lastPlayedHand = null; // 记录上家出的牌
+        this.lastPlayedHand = null;
         this.isMyTurn = false;
 
         this.initCanvasSize();
         this.bindEvents();
-        this.setupSocketListeners();
-
         requestAnimationFrame(() => this.renderLoop());
       }
 
@@ -175,212 +186,188 @@
 
       bindEvents() {
         window.addEventListener('resize', () => this.initCanvasSize());
+        this.canvas.addEventListener('click', (e) => this.handleCardClick(e));
+      }
 
-        const handlePointer = (e) => {
-          const rect = this.canvas.getBoundingClientRect();
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      handleCardClick(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
 
-          const clickX = clientX - rect.left;
-          const clickY = clientY - rect.top;
+        const cardW = Math.min(60, (this.width - 40) / (this.myHand.length || 1));
+        const cardH = 88;
+        const overlap = Math.min(26, (this.width - 80) / (this.myHand.length || 1));
+        const startX = (this.width - (cardW + (this.myHand.length - 1) * overlap)) / 2;
+        const startY = this.height - cardH - 15;
 
-          const cardW = Math.min(60, (this.width - 40) / (this.myHand.length || 1));
-          const cardH = 88;
-          const overlap = Math.min(26, (this.width - 80) / (this.myHand.length || 1));
-          const startX = (this.width - (cardW + (this.myHand.length - 1) * overlap)) / 2;
-          const startY = this.height - cardH - 15;
-
-          for (let i = this.myHand.length - 1; i >= 0; i--) {
-            const x = startX + i * overlap;
-            const isLast = i === this.myHand.length - 1;
-            const hitW = isLast ? cardW : overlap;
-
-            if (clickX >= x && clickX <= x + hitW && clickY >= startY - 20 && clickY <= startY + cardH) {
-              if (this.selectedIndices.has(i)) {
-                this.selectedIndices.delete(i);
-              } else {
-                this.selectedIndices.add(i);
-              }
-              break;
-            }
+        for (let i = this.myHand.length - 1; i >= 0; i--) {
+          const x = startX + i * overlap;
+          const hitW = (i === this.myHand.length - 1) ? cardW : overlap;
+          if (clickX >= x && clickX <= x + hitW && clickY >= startY - 20 && clickY <= startY + cardH) {
+            this.selectedIndices.has(i) ? this.selectedIndices.delete(i) : this.selectedIndices.add(i);
+            break;
           }
-        };
+        }
+      }
 
-        this.canvas.addEventListener('touchstart', (e) => {
-          handlePointer(e);
-          e.preventDefault();
-        }, { passive: false });
+      async handleAuth(type) {
+        const username = document.getElementById('auth-username').value.trim();
+        const password = document.getElementById('auth-password').value.trim();
+        if (!username || !password) return alert('请输入完整信息');
 
-        this.canvas.addEventListener('click', handlePointer);
+        const endpoint = type === 'login' ? '/api/auth/login' : '/api/auth/register';
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          if (type === 'register') {
+            alert('注册成功，请直接登录！');
+          } else {
+            this.user = data.user;
+            this.updateUserUI();
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('lobby-modal').classList.remove('hidden');
+            document.getElementById('lobby-nav').classList.remove('hidden');
+
+            socket = io(window.location.origin);
+            this.setupSocketListeners();
+          }
+        } else {
+          alert(data.error);
+        }
+      }
+
+      updateUserUI() {
+        document.getElementById('my-name').innerText = this.user.username;
+        document.getElementById('my-coins').innerText = this.user.coins;
+        document.getElementById('my-avatar').innerText = this.user.avatar || '👑';
+      }
+
+      openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+      closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+      async saveSettings() {
+        const avatar = document.getElementById('set-avatar').value.trim();
+        const newPassword = document.getElementById('set-new-password').value.trim();
+
+        const res = await fetch('/api/user/update-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: this.user.username, avatar, newPassword })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.user = data.user;
+          this.updateUserUI();
+          alert('设置保存成功！');
+          this.closeModal('settings-modal');
+        }
+      }
+
+      async openShop() {
+        document.getElementById('shop-modal').classList.remove('hidden');
+        const res = await fetch('/api/shop/items');
+        const data = await res.json();
+        if (data.success) {
+          const grid = document.getElementById('shop-grid');
+          grid.innerHTML = data.items.map(item => {
+            const owned = this.user.inventory.includes(item.itemId);
+            return `
+              <div class="shop-item-card">
+                <div class="shop-item-icon">${item.icon}</div>
+                <div class="shop-item-name">${item.name}</div>
+                <div class="shop-item-price">🪙 ${item.price} 金币</div>
+                <button class="btn btn-gold" style="font-size:11px; padding:4px 8px;" 
+                  ${owned ? 'disabled' : ''} onclick="gameApp.buyItem('${item.itemId}')">
+                  ${owned ? '已拥有' : '购买'}
+                </button>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      async buyItem(itemId) {
+        const res = await fetch('/api/shop/buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: this.user.username, itemId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.user = data.user;
+          this.updateUserUI();
+          alert(data.message);
+          this.openShop();
+        } else {
+          alert(data.error);
+        }
       }
 
       setupSocketListeners() {
-        socket.on('room_created', ({ roomId, room }) => this.updateRoomState(room));
-        socket.on('room_updated', (room) => this.updateRoomState(room));
-
-        socket.on('game_start', ({ message, room, currentTurnSocketId }) => {
+        socket.on('room_created', ({ room }) => this.roomId = room.id);
+        socket.on('game_start', ({ message, currentTurnSocketId }) => {
           alert(message);
-          this.updateRoomState(room);
+          document.getElementById('lobby-modal').classList.add('hidden');
           document.getElementById('action-bar').classList.remove('hidden');
           document.getElementById('turn-tip').classList.remove('hidden');
-          
           this.dealCards();
-          this.updateTurnState(currentTurnSocketId, '', null);
+          this.updateTurnState(currentTurnSocketId, '');
         });
 
         socket.on('turn_changed', ({ currentTurnSocketId, username, lastPlayedHand }) => {
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
-        socket.on('cards_played', (data) => {
-          this.tableCards.push(data);
-        });
-
-        socket.on('game_result', (data) => {
-          document.getElementById('action-bar').classList.add('hidden');
-          document.getElementById('turn-tip').classList.add('hidden');
-          document.getElementById('settlement-modal').classList.remove('hidden');
-          document.getElementById('settlement-title').innerText = data.winner === this.user.username ? '🎉 胜利获胜！' : '💔 遗憾落败';
-          document.getElementById('settlement-desc').innerText = data.message;
-        });
-
-        socket.on('error_message', (msg) => alert(msg));
+        socket.on('cards_played', (data) => this.tableCards.push(data));
       }
 
       updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
         this.isMyTurn = (socket.id === currentTurnSocketId);
-        if (lastPlayedHand !== undefined) {
-          this.lastPlayedHand = lastPlayedHand;
-        }
+        if (lastPlayedHand !== undefined) this.lastPlayedHand = lastPlayedHand;
 
-        const btnPlay = document.getElementById('btn-play');
-        const btnPass = document.getElementById('btn-pass');
+        document.getElementById('btn-play').disabled = !this.isMyTurn;
+        document.getElementById('btn-pass').disabled = !this.isMyTurn || !this.lastPlayedHand || this.lastPlayedHand.playerId === socket.id;
+
         const turnTip = document.getElementById('turn-tip');
-
-        if (this.isMyTurn) {
-          btnPlay.disabled = false;
-          // 如果上家不出，或者是我自己首发牌，不能点“不出”
-          btnPass.disabled = !this.lastPlayedHand || this.lastPlayedHand.playerId === socket.id;
-          turnTip.innerText = "👉 轮到你的回合，请出牌！";
-          turnTip.style.color = "#4ade80";
-          turnTip.style.borderColor = "#4ade80";
-        } else {
-          btnPlay.disabled = true;
-          btnPass.disabled = true;
-          turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】正在思考中...`;
-          turnTip.style.color = "#facc15";
-          turnTip.style.borderColor = "#facc15";
-        }
+        turnTip.innerText = this.isMyTurn ? "👉 轮到你的回合，请出牌！" : `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
       }
 
-      updateRoomState(room) {
-        this.players = room.players;
-        document.getElementById('player-count').innerText = room.players.length;
-        document.getElementById('room-badge').classList.remove('hidden');
-      }
-
-      async login() {
-        const username = document.getElementById('username-input').value.trim();
-        if (!username) return alert('请输入有效昵称');
-
-        try {
-          const res = await fetch('/api/user/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username })
-          });
-          const data = await res.json();
-
-          if (data.success) {
-            this.user = data.user;
-            document.getElementById('my-name').innerText = this.user.username;
-            document.getElementById('my-coins').innerText = this.user.coins;
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('lobby-modal').classList.remove('hidden');
-          }
-        } catch (e) {
-          alert('网络服务连接失败，请检查后端运行状态！');
-        }
-      }
-
-      createRoom() {
-        const roomId = document.getElementById('room-input').value.trim();
-        if (!roomId) return alert('请输入房间号');
-        this.roomId = roomId;
-        document.getElementById('room-id-text').innerText = roomId;
-        document.getElementById('lobby-modal').classList.add('hidden');
-        socket.emit('create_room', { roomId, username: this.user.username });
-      }
-
-      joinRoom() {
-        const roomId = document.getElementById('room-input').value.trim();
-        if (!roomId) return alert('请输入房间号');
-        this.roomId = roomId;
-        document.getElementById('room-id-text').innerText = roomId;
-        document.getElementById('lobby-modal').classList.add('hidden');
-        socket.emit('join_room', { roomId, username: this.user.username });
-      }
+      createRoom() { socket.emit('create_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
+      joinRoom() { socket.emit('join_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
 
       dealCards() {
         const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
         const deck = [];
-
         ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
-        deck.push({ rank: '小王', suit: '', value: 16 });
-        deck.push({ rank: '大王', suit: '', value: 17 });
-
-        for (let i = deck.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [deck[i], deck[j]] = [deck[j], deck[i]];
-        }
-
-        this.myHand = deck.slice(0, 17);
-        this.sortHand();
+        deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
+        for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+        this.myHand = deck.slice(0, 17).sort((a,b) => b.value - a.value);
       }
 
-      sortHand() {
-        this.myHand.sort((a, b) => b.value - a.value);
-        this.selectedIndices.clear();
-      }
+      sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
 
-      // 出牌核心比牌判定逻辑
       playCards() {
-        if (!this.isMyTurn) return alert('还没轮到你出牌！');
-        if (this.selectedIndices.size === 0) return alert('请先选择要出的手牌！');
-
+        if (this.selectedIndices.size === 0) return alert('请选择手牌');
         const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
         const handInfo = CardRulesEngine.parseCards(selectedCards);
-
         if (!handInfo) return alert('非法的出牌组合！');
-
-        // 【关键修复】比牌校验：是否压得过上家的牌（如：对 5 压 对 4）
-        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) {
-          return alert('出的牌无法压过上家！必须出相同牌型且更大的牌。');
-        }
+        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return alert('无法压过上家的牌！');
 
         handInfo.cardsText = selectedCards.map(c => (c.suit || '') + c.rank).join(' ');
-
-        socket.emit('play_cards', {
-          roomId: this.roomId,
-          handInfo
-        });
+        socket.emit('play_cards', { roomId: this.roomId, handInfo });
 
         this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
         this.selectedIndices.clear();
-
-        if (this.myHand.length === 0) {
-          socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
-        }
+        if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
       }
 
-      passTurn() {
-        if (!this.isMyTurn) return alert('还没轮到你操作！');
-        this.selectedIndices.clear();
-        socket.emit('pass_turn', { roomId: this.roomId });
-      }
-
-      backToLobby() { window.location.reload(); }
+      passTurn() { this.selectedIndices.clear(); socket.emit('pass_turn', { roomId: this.roomId }); }
 
       renderLoop() {
         this.ctx.clearRect(0, 0, this.width, this.height);
@@ -388,35 +375,15 @@
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         this.ctx.font = 'bold 28px sans-serif';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('斗地主 · 2人PK场', this.width / 2, this.height / 2 - 30);
+        this.ctx.fillText('斗地主 · 商业版', this.width / 2, this.height / 2 - 30);
 
-        this.players.forEach((p) => {
-          const isMe = p.username === (this.user ? this.user.username : '');
-          if (!isMe) {
-            const posX = this.width / 2;
-            const posY = 70;
-
-            this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            this.ctx.beginPath();
-            this.ctx.arc(posX, posY, 22, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '12px sans-serif';
-            this.ctx.fillText(`对手: ${p.username}`, posX, posY + 34);
-          }
-        });
-
-        // 桌面上的牌
         if (this.tableCards.length > 0) {
           const last = this.tableCards[this.tableCards.length - 1];
           this.ctx.fillStyle = '#facc15';
           this.ctx.font = 'bold 15px sans-serif';
-          this.ctx.textAlign = 'center';
           this.ctx.fillText(`${last.username}: ${last.cardsText || last.cards}`, this.width / 2, this.height / 2 + 20);
         }
 
-        // 手牌渲染
         if (this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = Math.min(60, (this.width - 40) / total);
@@ -430,7 +397,7 @@
             const isSelected = this.selectedIndices.has(i);
             const drawY = isSelected ? startY - 16 : startY;
 
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = (this.user && this.user.equippedCardSkin === 'skin_gold') ? '#1e293b' : '#ffffff';
             this.ctx.beginPath();
             this.ctx.roundRect(x, drawY, cardW, cardH, 6);
             this.ctx.fill();
@@ -440,7 +407,7 @@
             this.ctx.stroke();
 
             const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
-            this.ctx.fillStyle = isRed ? '#e11d48' : '#0f172a';
+            this.ctx.fillStyle = isRed ? '#e11d48' : (this.user && this.user.equippedCardSkin === 'skin_gold' ? '#facc15' : '#0f172a');
             this.ctx.font = 'bold 14px monospace';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(card.rank, x + 4, drawY + 16);
@@ -456,9 +423,7 @@
     }
 
     let gameApp;
-    window.addEventListener('DOMContentLoaded', () => {
-      gameApp = new LandlordGameApp();
-    });
+    window.addEventListener('DOMContentLoaded', () => { gameApp = new LandlordGameApp(); });
   </script>
 </body>
 </html>
