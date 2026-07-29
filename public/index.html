@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 彻底修复压自己牌 Bug 版</title>
+  <title>CYBER LANDLORD - 彻底修复压牌归属 Bug 版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -137,7 +137,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">BUGFIX V7.0</p>
+          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">FINAL BUGFIX V8.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -268,7 +268,7 @@
       }
 
       static canBeat(myHand, lastHand) {
-        // 如果没有上一手牌，或者上一手牌就是你自己出的（其他人全 Pass 回到你），直接允许自由出牌！
+        // 如果桌面为空，或者已经全员 Pass，直接允许自由出牌！
         if (!lastHand) return true;
 
         if (myHand.type === 'KING_BOMB') return true;
@@ -500,12 +500,12 @@
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
+        // 【核心修复】：准确捕获桌面状态
         socket.on('cards_played', (data) => {
-          // 【核心修复】：如果收到的广播标识 isClear，或者 lastPlayedHand 为空，彻底重置桌面状态！
-          if (data.isClear || data.lastPlayedHand === null) {
+          if (data.isClear) {
             this.tablePlayedHand = null;
             this.lastPlayedHand = null;
-          } else if (data.cardsText !== '不出 / PASS') {
+          } else if (data.rawCards) {
             this.tablePlayedHand = data;
           }
         });
@@ -513,26 +513,27 @@
         socket.on('error_message', (msg) => this.showToast('⚠️ ' + msg));
       }
 
+      // 【核心修复点】：精准校验回合所属权
       updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
         this.isMyTurn = (socket.id === currentTurnSocketId);
-        
-        // 【核心修复】：如果服务端传来 lastPlayedHand 为 null，或者上一次出牌的人就是你自己（代表所有人都 Pass 了你又转回来了）
-        if (lastPlayedHand === null || (lastPlayedHand && lastPlayedHand.playerId === socket.id)) {
+
+        // 如果服务器通知 lastPlayedHand 属于你自己（别人全都 Pass 了绕回你），彻底清空压牌！
+        if (!lastPlayedHand || (lastPlayedHand && lastPlayedHand.playerId === socket.id)) {
           this.lastPlayedHand = null;
           this.tablePlayedHand = null;
-        } else if (lastPlayedHand !== undefined) {
+        } else {
           this.lastPlayedHand = lastPlayedHand;
         }
 
         document.getElementById('btn-play').disabled = !this.isMyTurn;
         
-        // 如果当前是你的回合，且上一手牌不是你出的（即有上家压牌），才允许点击 Pass
-        const canPass = this.isMyTurn && this.lastPlayedHand !== null && this.lastPlayedHand.playerId !== socket.id;
+        // 当桌面压牌为空（也就是你拥有自由出牌权时），严禁按 PASS（必须出牌领头）
+        const canPass = this.isMyTurn && this.lastPlayedHand !== null;
         document.getElementById('btn-pass').disabled = !canPass;
 
         const turnTip = document.getElementById('turn-tip');
         if (this.isMyTurn) {
-          turnTip.innerText = this.lastPlayedHand === null ? "👉 桌面已清空！你拥有自由出牌权！" : "👉 轮到你的回合，请压牌或 Pass！";
+          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由出牌权！" : "👉 轮到你的回合，请压牌或 Pass！";
         } else {
           turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
         }
@@ -619,7 +620,8 @@
             this.triggerAITurn(1);
           } else {
             this.isMyTurn = true;
-            this.lastPlayedHand = null; // AI 轮完一圈回到你，清空自由出牌
+            // AI 轮完一圈回到你，彻底清空，恢复自由出牌权！
+            this.lastPlayedHand = null; 
             this.tablePlayedHand = null;
             document.getElementById('btn-play').disabled = false;
             document.getElementById('btn-pass').disabled = true;
