@@ -2,565 +2,166 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>JR AI 欢乐斗地主 - 商业旗舰版</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JR AI 斗地主 - 后台控制台</title>
   <style>
-    :root {
-      --primary-gold: #facc15;
-      --gold-dark: #b45309;
-      --bg-dark: #090d16;
-      --panel-bg: rgba(18, 26, 43, 0.85);
-      --border-color: rgba(255, 215, 0, 0.2);
-      --sidebar-width: 220px;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b0f19; color: #f8fafc; padding: 24px; }
+    .header { margin-bottom: 24px; border-bottom: 1px solid #1e293b; padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 1.6rem; color: #38bdf8; font-weight: 800; }
+    .card { background: #131c2e; border-radius: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #1e293b; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h2 { font-size: 1.1rem; color: #facc15; margin-bottom: 16px; }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-dark); display: flex; justify-content: center; align-items: center; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px 16px; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
+    th { background: #0b0f19; color: #94a3b8; }
 
-    #game-container {
-      position: relative; width: 100vw; height: 100vh;
-      max-width: 1280px; max-height: 720px;
-      background: radial-gradient(circle at 50% 30%, #1a2942 0%, #070b12 100%);
-      box-shadow: 0 0 80px rgba(0, 0, 0, 0.9); overflow: hidden;
-      display: flex;
-    }
-
-    #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
-
-    /* ===== 左侧抽屉侧边栏 Sidebar ===== */
-    .sidebar {
-      width: var(--sidebar-width);
-      height: 100%;
-      background: rgba(11, 15, 25, 0.92);
-      backdrop-filter: blur(16px);
-      border-right: 1px solid var(--border-color);
-      z-index: 50;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 20px 12px;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      pointer-events: auto;
-    }
-
-    .sidebar-brand {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-    .sidebar-brand h2 {
-      font-size: 1.1rem;
-      background: linear-gradient(135deg, #facc15 0%, #f97316 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-weight: 900;
-      letter-spacing: 1px;
-    }
-
-    .sidebar-menu { display: flex; flex-direction: column; gap: 10px; }
-    .nav-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px; border-radius: 12px;
-      color: #94a3b8; font-size: 14px; font-weight: bold;
-      cursor: pointer; transition: all 0.2s;
-      border: 1px solid transparent;
-    }
-    .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
-    .nav-item.active {
-      background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, rgba(249, 115, 22, 0.1) 100%);
-      border-color: rgba(250, 204, 21, 0.3);
-      color: var(--primary-gold);
-    }
-
-    .sidebar-user {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px; padding: 12px;
-      display: flex; align-items: center; gap: 10px;
-    }
-
-    /* ===== 右侧主视图内容区 ===== */
-    .main-viewport {
-      flex: 1;
-      height: 100%;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 16px;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    .hidden { display: none !important; }
-
-    /* 通用面板卡片样式 */
-    .view-panel {
-      position: absolute;
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: var(--panel-bg); backdrop-filter: blur(16px);
-      border: 1.5px solid var(--border-color); border-radius: 24px;
-      padding: 28px; width: 90%; max-width: 460px; text-align: center;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-      pointer-events: auto; z-index: 20;
-    }
-
-    .panel-title { font-size: 22px; color: var(--primary-gold); margin-bottom: 20px; font-weight: 900; }
-
-    .input-field {
-      width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155;
-      background: rgba(15, 23, 42, 0.8); color: #fff; font-size: 14px; margin-bottom: 14px; outline: none;
-    }
-
-    .btn {
-      padding: 10px 22px; border-radius: 24px; border: none; font-size: 14px; font-weight: bold;
-      cursor: pointer; outline: none; transition: transform 0.1s ease;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); pointer-events: auto; display: inline-flex; align-items: center; justify-content: center;
-    }
-    .btn:active { transform: scale(0.94); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
-    .btn-gold { background: linear-gradient(180deg, #fde047 0%, #d97706 100%); color: #451a03; }
-    .btn-blue { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color: #fff; }
-    .btn-green { background: linear-gradient(180deg, #4ade80 0%, #15803d 100%); color: #fff; }
-    .btn-dark { background: linear-gradient(180deg, #475569 0%, #1e293b 100%); color: #f1f5f9; border: 1px solid rgba(255, 255, 255, 0.1); }
-
-    /* 商城布局 */
-    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 280px; overflow-y: auto; margin-bottom: 18px; }
-    .shop-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 12px; text-align: center; }
-
-    .action-bar { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 20; pointer-events: auto; }
-    .turn-tip {
-      position: absolute; bottom: 175px; left: 50%; transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
-      border: 1px solid var(--primary-gold); padding: 6px 20px; border-radius: 20px;
-      color: var(--primary-gold); font-weight: bold; font-size: 13px; pointer-events: none;
-    }
-
-    /* 登录/注册 Tab */
-    .auth-tabs { display: flex; margin-bottom: 16px; border-bottom: 1px solid #334155; }
-    .auth-tab { flex: 1; padding: 10px; color: #94a3b8; font-weight: bold; cursor: pointer; }
-    .auth-tab.active { color: var(--primary-gold); border-bottom: 2px solid var(--primary-gold); }
+    input, select { padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; background: #0b0f19; color: #fff; margin-right: 8px; margin-bottom: 8px; outline: none; }
+    button { padding: 8px 16px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; background: #0284c7; color: #fff; }
+    button:hover { background: #0369a1; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
   </style>
 </head>
 <body>
 
-  <div id="game-container">
-    <!-- Canvas 游戏画板 -->
-    <canvas id="gameCanvas"></canvas>
+  <div class="header">
+    <h1>⚙️ JR AI 斗地主 - 商业管理控制台</h1>
+    <button onclick="loadData()">🔄 刷新最新数据</button>
+  </div>
 
-    <!-- ===== 侧边栏 Sidebar (大厅/商城/设置 导航) ===== -->
-    <div class="sidebar hidden" id="main-sidebar">
-      <div>
-        <div class="sidebar-brand">
-          <h2>JR LANDLORD</h2>
-          <p style="color: #64748b; font-size: 10px; margin-top: 4px;">旗舰商业竞技版</p>
-        </div>
+  <div class="card">
+    <h2>👥 注册玩家列表 (MongoDB Atlas)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>用户名</th>
+          <th>资产金币</th>
+          <th>注册时间</th>
+          <th>使用皮肤</th>
+          <th>快捷资产管理</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body">
+        <tr><td colspan="5">数据加载中...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-        <div class="sidebar-menu">
-          <div class="nav-item active" id="nav-lobby" onclick="gameApp.switchView('lobby')">
-            <span>🎮</span> 游戏大厅
-          </div>
-          <div class="nav-item" id="nav-shop" onclick="gameApp.switchView('shop')">
-            <span>🛒</span> 道具商城
-          </div>
-          <div class="nav-item" id="nav-settings" onclick="gameApp.switchView('settings')">
-            <span>⚙️</span> 账户设置
-          </div>
-        </div>
-      </div>
-
-      <!-- 侧边栏底部个人简效面板 -->
-      <div class="sidebar-user">
-        <div style="font-size:24px;" id="sidebar-avatar">👑</div>
-        <div>
-          <div style="color:#fff; font-size:13px; font-weight:bold;" id="sidebar-username">玩家</div>
-          <div style="color:var(--primary-gold); font-size:12px;">🪙 <span id="sidebar-coins">0</span></div>
-        </div>
-      </div>
+  <div class="card">
+    <h2>🛒 商城道具上架管理</h2>
+    <div style="margin-bottom: 16px; background: #0b0f19; padding: 16px; border-radius: 10px;">
+      <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #38bdf8;">新增上架商品：</h3>
+      <input type="text" id="add-id" placeholder="商品ID (如: skin_red)" />
+      <input type="text" id="add-name" placeholder="名称 (如: 极光红牌背)" />
+      <select id="add-type">
+        <option value="SKIN">SKIN (牌背皮肤)</option>
+        <option value="AVATAR">AVATAR (头像框)</option>
+      </select>
+      <input type="number" id="add-price" placeholder="价格 (金币)" />
+      <input type="text" id="add-icon" placeholder="Emoji图标 (如: 🎴)" />
+      <input type="text" id="add-desc" placeholder="简短描述" style="width: 200px;" />
+      <button onclick="addItem()">确认上架</button>
     </div>
 
-    <!-- ===== 右侧游戏主区域 ===== -->
-    <div class="main-viewport">
-      <div class="turn-tip hidden" id="turn-tip">等待匹配房间...</div>
-
-      <div class="action-bar hidden" id="action-bar">
-        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">不出</button>
-        <button class="btn btn-blue" onclick="gameApp.sortHand()">理牌</button>
-        <button class="btn btn-green" id="btn-play" onclick="gameApp.playCards()">出牌</button>
-      </div>
-
-      <!-- 1. 登录/注册 弹窗 -->
-      <div class="view-panel" id="panel-auth">
-        <div class="panel-title">欢迎来到 欢乐斗地主</div>
-        <div class="auth-tabs">
-          <div class="auth-tab active" id="tab-login" onclick="gameApp.switchAuthTab('login')">账号登录</div>
-          <div class="auth-tab" id="tab-register" onclick="gameApp.switchAuthTab('register')">注册账号</div>
-        </div>
-
-        <input type="text" id="auth-username" class="input-field" placeholder="请输入用户名" value="JR玩家" />
-        <input type="password" id="auth-password" class="input-field" placeholder="请输入密码" value="123456" />
-
-        <button class="btn btn-gold" id="auth-submit-btn" style="width: 100%; margin-top: 8px;" onclick="gameApp.handleAuth()">登录大厅</button>
-      </div>
-
-      <!-- 2. 板块一：游戏大厅视图面板 -->
-      <div class="view-panel hidden" id="panel-lobby">
-        <div class="panel-title">🎮 游戏大厅</div>
-        <input type="text" id="room-input" class="input-field" placeholder="输入房间号 (例如: 888)" value="888" />
-        <div style="display: flex; gap: 12px; margin-top: 8px;">
-          <button class="btn btn-blue" style="flex: 1;" onclick="gameApp.createRoom()">创建房间</button>
-          <button class="btn btn-green" style="flex: 1;" onclick="gameApp.joinRoom()">快速加入</button>
-        </div>
-      </div>
-
-      <!-- 3. 板块二：道具商城视图面板 -->
-      <div class="view-panel hidden" id="panel-shop">
-        <div class="panel-title">🛒 道具皮肤商城</div>
-        <div class="shop-grid" id="shop-grid"></div>
-        <button class="btn btn-dark" style="width: 100%;" onclick="gameApp.switchView('lobby')">返回大厅</button>
-      </div>
-
-      <!-- 4. 板块三：账户设置视图面板 -->
-      <div class="view-panel hidden" id="panel-settings">
-        <div class="panel-title">⚙️ 账户信息设置</div>
-        <input type="text" id="set-avatar" class="input-field" placeholder="自定义头像 Emoji (例如: 🤖, 🐉, 👑)" />
-        <input type="password" id="set-new-password" class="input-field" placeholder="修改新密码 (选填)" />
-        <div style="display: flex; gap: 12px; margin-top: 8px;">
-          <button class="btn btn-gold" style="flex: 1;" onclick="gameApp.saveSettings()">保存改动</button>
-          <button class="btn btn-dark" style="flex: 1;" onclick="gameApp.switchView('lobby')">取消</button>
-        </div>
-      </div>
-    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>商品ID</th>
+          <th>图标</th>
+          <th>名称</th>
+          <th>类型</th>
+          <th>价格</th>
+          <th>描述</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="shop-table-body">
+        <tr><td colspan="7">数据加载中...</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <script>
-    let socket = null;
-    const CARD_SUITS = { SPADE: '♠', HEART: '♥', CLUB: '♣', DIAMOND: '♦' };
-    const RANK_VALUES = {
-      '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-      'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
-    };
-
-    class CardRulesEngine {
-      static parseCards(cards) {
-        if (!cards || cards.length === 0) return null;
-        const sorted = [...cards].sort((a, b) => a.value - b.value);
-        const len = sorted.length;
-        const values = sorted.map(c => c.value);
-        const freq = {};
-        values.forEach(v => freq[v] = (freq[v] || 0) + 1);
-        const counts = Object.values(freq);
-
-        if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2 };
-        if (len === 1) return { type: 'SINGLE', value: values[0], length: 1 };
-        if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2 };
-        if (len === 4 && Object.keys(counts).length === 1) return { type: 'BOMB', value: values[0], length: 4 };
-        return null;
+    async function loadData() {
+      const resUsers = await fetch('/api/admin/users');
+      const dataUsers = await resUsers.json();
+      if (dataUsers.success) {
+        const body = document.getElementById('user-table-body');
+        body.innerHTML = dataUsers.users.map(u => `
+          <tr>
+            <td><strong>${u.username}</strong></td>
+            <td style="color:#facc15; font-weight:bold;">🪙 ${u.coins}</td>
+            <td>${new Date(u.createdAt).toLocaleString()}</td>
+            <td><code>${u.equippedCardSkin || 'default'}</code></td>
+            <td>
+              <button onclick="updateCoins('${u.username}', 1000)">+1000金币</button>
+              <button class="btn-danger" onclick="updateCoins('${u.username}', -500)">-500金币</button>
+            </td>
+          </tr>
+        `).join('');
       }
 
-      static canBeat(myHand, lastHand) {
-        if (!lastHand) return true;
-        if (!myHand) return false;
-        if (myHand.type === 'KING_BOMB') return true;
-        if (lastHand.type === 'KING_BOMB') return false;
-        if (myHand.type === 'BOMB' && lastHand.type !== 'BOMB') return true;
-        if (myHand.type === lastHand.type && myHand.length === lastHand.length) return myHand.value > lastHand.value;
-        return false;
-      }
-    }
-
-    class LandlordGameApp {
-      constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.authMode = 'login';
-        this.currentView = 'lobby'; // lobby, shop, settings
-        this.user = null;
-        this.myHand = [];
-        this.selectedIndices = new Set();
-        this.tableCards = [];
-        this.lastPlayedHand = null;
-        this.isMyTurn = false;
-
-        this.initCanvasSize();
-        this.bindEvents();
-        requestAnimationFrame(() => this.renderLoop());
-      }
-
-      initCanvasSize() {
-        const container = document.getElementById('game-container');
-        const dpr = window.devicePixelRatio || 1;
-        this.canvas.width = container.clientWidth * dpr;
-        this.canvas.height = container.clientHeight * dpr;
-        this.ctx.scale(dpr, dpr);
-        this.width = container.clientWidth;
-        this.height = container.clientHeight;
-      }
-
-      bindEvents() {
-        window.addEventListener('resize', () => this.initCanvasSize());
-        this.canvas.addEventListener('click', (e) => this.handleCardClick(e));
-      }
-
-      handleCardClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-
-        const cardW = Math.min(60, (this.width - 40) / (this.myHand.length || 1));
-        const cardH = 88;
-        const overlap = Math.min(26, (this.width - 80) / (this.myHand.length || 1));
-        const startX = (this.width - (cardW + (this.myHand.length - 1) * overlap)) / 2;
-        const startY = this.height - cardH - 15;
-
-        for (let i = this.myHand.length - 1; i >= 0; i--) {
-          const x = startX + i * overlap;
-          const hitW = (i === this.myHand.length - 1) ? cardW : overlap;
-          if (clickX >= x && clickX <= x + hitW && clickY >= startY - 20 && clickY <= startY + cardH) {
-            this.selectedIndices.has(i) ? this.selectedIndices.delete(i) : this.selectedIndices.add(i);
-            break;
-          }
-        }
-      }
-
-      // 侧边栏导航面板切换控制
-      switchView(viewName) {
-        this.currentView = viewName;
-        
-        ['panel-lobby', 'panel-shop', 'panel-settings'].forEach(id => {
-          document.getElementById(id).classList.add('hidden');
-        });
-        ['nav-lobby', 'nav-shop', 'nav-settings'].forEach(id => {
-          document.getElementById(id).classList.remove('active');
-        });
-
-        document.getElementById(`panel-${viewName}`).classList.remove('hidden');
-        document.getElementById(`nav-${viewName}`).classList.add('active');
-
-        if (viewName === 'shop') {
-          this.loadShopItems();
-        }
-      }
-
-      switchAuthTab(tab) {
-        this.authMode = tab;
-        document.getElementById('tab-login').className = `auth-tab ${tab === 'login' ? 'active' : ''}`;
-        document.getElementById('tab-register').className = `auth-tab ${tab === 'register' ? 'active' : ''}`;
-        document.getElementById('auth-submit-btn').innerText = tab === 'login' ? '登录大厅' : '注册账号';
-      }
-
-      async handleAuth() {
-        const username = document.getElementById('auth-username').value.trim();
-        const password = document.getElementById('auth-password').value.trim();
-        if (!username || !password) return alert('请输入完整信息');
-
-        const endpoint = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          if (this.authMode === 'register') {
-            alert('注册成功，请直接登录！');
-            this.switchAuthTab('login');
-          } else {
-            this.user = data.user;
-            this.updateUserUI();
-            document.getElementById('panel-auth').classList.add('hidden');
-            document.getElementById('main-sidebar').classList.remove('hidden');
-            this.switchView('lobby');
-
-            socket = io(window.location.origin);
-            this.setupSocketListeners();
-          }
-        } else {
-          alert(data.error);
-        }
-      }
-
-      updateUserUI() {
-        document.getElementById('sidebar-username').innerText = this.user.username;
-        document.getElementById('sidebar-coins').innerText = this.user.coins;
-        document.getElementById('sidebar-avatar').innerText = this.user.avatar || '👑';
-      }
-
-      async saveSettings() {
-        const avatar = document.getElementById('set-avatar').value.trim();
-        const newPassword = document.getElementById('set-new-password').value.trim();
-
-        const res = await fetch('/api/user/update-settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: this.user.username, avatar, newPassword })
-        });
-        const data = await res.json();
-        if (data.success) {
-          this.user = data.user;
-          this.updateUserUI();
-          alert('个人改动保存成功！');
-          this.switchView('lobby');
-        }
-      }
-
-      async loadShopItems() {
-        const res = await fetch('/api/shop/items');
-        const data = await res.json();
-        if (data.success) {
-          const grid = document.getElementById('shop-grid');
-          grid.innerHTML = data.items.map(item => {
-            const owned = this.user.inventory.includes(item.itemId);
-            return `
-              <div class="shop-card">
-                <div class="shop-icon">${item.icon}</div>
-                <div class="shop-title">${item.name}</div>
-                <div class="shop-price">🪙 ${item.price} 金币</div>
-                <button class="btn btn-gold" style="font-size:11px; padding:4px 10px;" 
-                  ${owned ? 'disabled' : ''} onclick="gameApp.buyItem('${item.itemId}')">
-                  ${owned ? '已拥有' : '购买'}
-                </button>
-              </div>
-            `;
-          }).join('');
-        }
-      }
-
-      async buyItem(itemId) {
-        const res = await fetch('/api/shop/buy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: this.user.username, itemId })
-        });
-        const data = await res.json();
-        if (data.success) {
-          this.user = data.user;
-          this.updateUserUI();
-          alert(data.message);
-          this.loadShopItems();
-        } else {
-          alert(data.error);
-        }
-      }
-
-      setupSocketListeners() {
-        socket.on('room_created', ({ room }) => this.roomId = room.id);
-        socket.on('game_start', ({ message, currentTurnSocketId }) => {
-          alert(message);
-          document.getElementById('panel-lobby').classList.add('hidden');
-          document.getElementById('main-sidebar').classList.add('hidden'); // 游戏中隐藏侧边栏提升体验
-          document.getElementById('action-bar').classList.remove('hidden');
-          document.getElementById('turn-tip').classList.remove('hidden');
-          this.dealCards();
-          this.updateTurnState(currentTurnSocketId, '');
-        });
-
-        socket.on('turn_changed', ({ currentTurnSocketId, username, lastPlayedHand }) => {
-          this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
-        });
-
-        socket.on('cards_played', (data) => this.tableCards.push(data));
-      }
-
-      updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
-        this.isMyTurn = (socket.id === currentTurnSocketId);
-        if (lastPlayedHand !== undefined) this.lastPlayedHand = lastPlayedHand;
-
-        document.getElementById('btn-play').disabled = !this.isMyTurn;
-        document.getElementById('btn-pass').disabled = !this.isMyTurn || !this.lastPlayedHand || this.lastPlayedHand.playerId === socket.id;
-
-        const turnTip = document.getElementById('turn-tip');
-        turnTip.innerText = this.isMyTurn ? "👉 轮到你的回合，请选择出牌！" : `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
-      }
-
-      createRoom() { socket.emit('create_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
-      joinRoom() { socket.emit('join_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
-
-      dealCards() {
-        const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
-        const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
-        const deck = [];
-        ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
-        deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
-        for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-        this.myHand = deck.slice(0, 17).sort((a,b) => b.value - a.value);
-      }
-
-      sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
-
-      playCards() {
-        if (this.selectedIndices.size === 0) return alert('请选择手牌');
-        const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
-        const handInfo = CardRulesEngine.parseCards(selectedCards);
-        if (!handInfo) return alert('非法的出牌组合！');
-        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return alert('出的牌无法压过上家！');
-
-        handInfo.cardsText = selectedCards.map(c => (c.suit || '') + c.rank).join(' ');
-        socket.emit('play_cards', { roomId: this.roomId, handInfo });
-
-        this.myHand = this.myHand.filter((_, idx) => !this.selectedIndices.has(idx));
-        this.selectedIndices.clear();
-        if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
-      }
-
-      passTurn() { this.selectedIndices.clear(); socket.emit('pass_turn', { roomId: this.roomId }); }
-
-      renderLoop() {
-        this.ctx.clearRect(0, 0, this.width, this.height);
-
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-        this.ctx.font = '900 32px sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('JR AI 竞技斗地主', this.width / 2, this.height / 2 - 30);
-
-        if (this.tableCards.length > 0) {
-          const last = this.tableCards[this.tableCards.length - 1];
-          this.ctx.fillStyle = '#facc15';
-          this.ctx.font = 'bold 16px sans-serif';
-          this.ctx.fillText(`${last.username}: ${last.cardsText || last.cards}`, this.width / 2, this.height / 2 + 20);
-        }
-
-        if (this.myHand.length > 0) {
-          const total = this.myHand.length;
-          const cardW = Math.min(60, (this.width - 40) / total);
-          const cardH = 88;
-          const overlap = Math.min(26, (this.width - 80) / total);
-          const startX = (this.width - (cardW + (total - 1) * overlap)) / 2;
-          const startY = this.height - cardH - 15;
-
-          this.myHand.forEach((card, i) => {
-            const x = startX + i * overlap;
-            const isSelected = this.selectedIndices.has(i);
-            const drawY = isSelected ? startY - 16 : startY;
-
-            this.ctx.fillStyle = (this.user && this.user.equippedCardSkin === 'skin_gold') ? '#0f172a' : '#ffffff';
-            this.ctx.beginPath();
-            this.ctx.roundRect(x, drawY, cardW, cardH, 6);
-            this.ctx.fill();
-
-            this.ctx.lineWidth = isSelected ? 2 : 1;
-            this.ctx.strokeStyle = isSelected ? '#38bdf8' : '#cbd5e1';
-            this.ctx.stroke();
-
-            const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
-            this.ctx.fillStyle = isRed ? '#e11d48' : (this.user && this.user.equippedCardSkin === 'skin_gold' ? '#facc15' : '#0f172a');
-            this.ctx.font = 'bold 14px monospace';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText(card.rank, x + 4, drawY + 16);
-
-            this.ctx.font = '18px monospace';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(card.suit || (card.rank === '大王' ? '★' : '☆'), x + cardW / 2, drawY + cardH / 2 + 8);
-          });
-        }
-
-        requestAnimationFrame(() => this.renderLoop());
+      const resShop = await fetch('/api/shop/items');
+      const dataShop = await resShop.json();
+      if (dataShop.success) {
+        const body = document.getElementById('shop-table-body');
+        body.innerHTML = dataShop.items.map(item => `
+          <tr>
+            <td><code>${item.itemId}</code></td>
+            <td style="font-size:20px;">${item.icon}</td>
+            <td><strong>${item.name}</strong></td>
+            <td><span style="color:#38bdf8;">${item.type}</span></td>
+            <td style="color:#facc15;">🪙 ${item.price}</td>
+            <td style="color:#94a3b8;">${item.description}</td>
+            <td>
+              <button class="btn-danger" onclick="deleteItem('${item.itemId}')">下架</button>
+            </td>
+          </tr>
+        `).join('');
       }
     }
 
-    let gameApp;
-    window.addEventListener('DOMContentLoaded', () => { gameApp = new LandlordGameApp(); });
+    async function updateCoins(username, amount) {
+      const res = await fetch('/api/admin/update-coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, amount })
+      });
+      const data = await res.json();
+      if (data.success) loadData();
+    }
+
+    async function addItem() {
+      const itemId = document.getElementById('add-id').value.trim();
+      const name = document.getElementById('add-name').value.trim();
+      const type = document.getElementById('add-type').value;
+      const price = Number(document.getElementById('add-price').value);
+      const icon = document.getElementById('add-icon').value.trim() || '🎁';
+      const description = document.getElementById('add-desc').value.trim();
+
+      if (!itemId || !name || !price) return alert('信息填写不完整');
+
+      const res = await fetch('/api/admin/add-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, name, type, price, icon, description })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('上架成功！');
+        loadData();
+      }
+    }
+
+    async function deleteItem(itemId) {
+      if (!confirm(`确定下架商品 ${itemId} 吗？`)) return;
+      const res = await fetch(`/api/admin/delete-item/${itemId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) loadData();
+    }
+
+    window.onload = loadData;
   </script>
 </body>
 </html>
