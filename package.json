@@ -1,7 +1,7 @@
 {
-  "name": "landlord-game",
-  "version": "2.0.0",
-  "description": "Commercial Landlord Game with Account Management, Shop, Admin Console, Socket.IO, and MongoDB Atlas",
+  "name": "landlord-cyber-master",
+  "version": "3.0.0",
+  "description": "Cyberpunk Commercial Landlord Game with 2FA TOTP Security, Shop, Admin Console, and Canvas Engine",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,6 +13,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mongoose": "^8.3.0",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.3",
     "socket.io": "^4.7.5"
   }
 }
