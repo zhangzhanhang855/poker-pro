@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>斗地主 - 运营后台管理控制台</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; padding: 24px; }
+    .header { margin-bottom: 24px; border-bottom: 1px solid #334155; padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 1.5rem; color: #38bdf8; }
+    .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #334155; }
+    h2 { font-size: 1.1rem; color: #facc15; margin-bottom: 16px; }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px; border-bottom: 1px solid #334155; font-size: 0.9rem; }
+    th { background: #0f172a; color: #94a3b8; }
+    
+    input, select { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-right: 8px; margin-bottom: 8px; }
+    button { padding: 8px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; background: #0284c7; color: #fff; }
+    button:hover { background: #0369a1; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>⚙️ 斗地主游戏 - 后台管理控制台</h1>
+    <button onclick="loadData()">🔄 刷新数据</button>
+  </div>
+
+  <!-- 1. 玩家金币管理卡片 -->
+  <div class="card">
+    <h2>👥 玩家资产管理 (MongoDB Atlas)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>用户名</th>
+          <th>当前金币</th>
+          <th>注册时间</th>
+          <th>已装备皮肤</th>
+          <th>操作（快捷改币）</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body">
+        <tr><td colspan="5">加载中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. 商城道具上架管理卡片 -->
+  <div class="card">
+    <h2>🛒 商城道具上架 / 下架管理</h2>
+    
+    <div style="margin-bottom: 16px; background: #0f172a; padding: 16px; border-radius: 8px;">
+      <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #38bdf8;">新增上架道具：</h3>
+      <input type="text" id="add-id" placeholder="商品ID (如: skin_red)" />
+      <input type="text" id="add-name" placeholder="商品名称 (如: 经典红牌背)" />
+      <select id="add-type">
+        <option value="SKIN">SKIN (牌背皮肤)</option>
+        <option value="AVATAR">AVATAR (头像框)</option>
+      </select>
+      <input type="number" id="add-price" placeholder="价格 (金币)" />
+      <input type="text" id="add-icon" placeholder="图标Emoji (如: 🎴)" />
+      <input type="text" id="add-desc" placeholder="商品描述" style="width: 250px;" />
+      <button onclick="addItem()">确认上架</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>商品ID</th>
+          <th>图标</th>
+          <th>名称</th>
+          <th>类型</th>
+          <th>价格</th>
+          <th>描述</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="shop-table-body">
+        <tr><td colspan="7">加载中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    async function loadData() {
+      // 1. 加载用户列表
+      const resUsers = await fetch('/api/admin/users');
+      const dataUsers = await resUsers.json();
+      if (dataUsers.success) {
+        const body = document.getElementById('user-table-body');
+        body.innerHTML = dataUsers.users.map(u => `
+          <tr>
+            <td><strong>${u.username}</strong></td>
+            <td style="color:#facc15; font-weight:bold;">🪙 ${u.coins}</td>
+            <td>${new Date(u.createdAt).toLocaleString()}</td>
+            <td>${u.equippedCardSkin || '默认'}</td>
+            <td>
+              <button onclick="updateCoins('${u.username}', 1000)">+1000金币</button>
+              <button class="btn-danger" onclick="updateCoins('${u.username}', -500)">-500金币</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      // 2. 加载商城道具列表
+      const resShop = await fetch('/api/shop/items');
+      const dataShop = await resShop.json();
+      if (dataShop.success) {
+        const body = document.getElementById('shop-table-body');
+        body.innerHTML = dataShop.items.map(item => `
+          <tr>
+            <td><code>${item.itemId}</code></td>
+            <td style="font-size:20px;">${item.icon}</td>
+            <td><strong>${item.name}</strong></td>
+            <td><span style="color:#38bdf8;">${item.type}</span></td>
+            <td style="color:#facc15;">🪙 ${item.price}</td>
+            <td style="color:#94a3b8;">${item.description}</td>
+            <td>
+              <button class="btn-danger" onclick="deleteItem('${item.itemId}')">下架</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    async function updateCoins(username, amount) {
+      const res = await fetch('/api/admin/update-coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+      }
+    }
+
+    async function addItem() {
+      const itemId = document.getElementById('add-id').value.trim();
+      const name = document.getElementById('add-name').value.trim();
+      const type = document.getElementById('add-type').value;
+      const price = Number(document.getElementById('add-price').value);
+      const icon = document.getElementById('add-icon').value.trim() || '🎁';
+      const description = document.getElementById('add-desc').value.trim();
+
+      if (!itemId || !name || !price) return alert('请填全基础信息');
+
+      const res = await fetch('/api/admin/add-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, name, type, price, icon, description })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('商品上架成功！');
+        loadData();
+      } else {
+        alert(data.error);
+      }
+    }
+
+    async function deleteItem(itemId) {
+      if (!confirm(`确定下架商品 ${itemId} 吗？`)) return;
+      const res = await fetch(`/api/admin/delete-item/${itemId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+      }
+    }
+
+    window.onload = loadData;
+  </script>
+</body>
+</html>
