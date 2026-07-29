@@ -17,12 +17,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MongoDB Atlas
+// ==========================================
+// 1. MongoDB Atlas 数据库模型定义与连接
+// ==========================================
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/landlord_db";
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ [MongoDB Atlas] 连接成功！'))
+  .then(() => console.log('✅ [MongoDB Atlas] 数据库连接成功！'))
   .catch(err => console.error('❌ [MongoDB Atlas] 连接失败:', err));
 
+// 用户 Schema
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -36,6 +39,7 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
+// 商城道具 Schema
 const ItemSchema = new mongoose.Schema({
   itemId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -46,6 +50,7 @@ const ItemSchema = new mongoose.Schema({
 });
 const Item = mongoose.model('Item', ItemSchema);
 
+// 初始化商城数据
 async function initShopItems() {
   const count = await Item.countDocuments();
   if (count === 0) {
@@ -55,43 +60,60 @@ async function initShopItems() {
       { itemId: 'avatar_dragon', name: '神龙专属头像', type: 'AVATAR', price: 600, description: '尊贵限定神龙框', icon: '🐉' },
       { itemId: 'avatar_robot', name: 'JR AI 极客头像', type: 'AVATAR', price: 300, description: 'JR AI 专属高阶人工智能头像', icon: '🤖' }
     ]);
+    console.log('🛒 [Shop] 商城默认初始化完成！');
   }
 }
 initShopItems();
 
-// 用户认证 & 2FA 接口
+// ==========================================
+// 2. HTTP RESTful API (注册/登录/2FA/商城/后台)
+// ==========================================
+
+// 账号注册
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '账号和密码不能为空' });
   try {
     const existing = await User.findOne({ username });
-    if (existing) return res.status(400).json({ error: '用户名已存在' });
+    if (existing) return res.status(400).json({ error: '该用户名已被占用' });
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword });
     await user.save();
-    res.json({ success: true, message: '注册成功，请登录！' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.json({ success: true, message: '注册成功，请直接登录！' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// 账号登录 (包含 2FA 校验)
 app.post('/api/auth/login', async (req, res) => {
   const { username, password, twoFAToken } = req.body;
   try {
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ error: '账号不存在' });
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: '密码错误' });
 
     if (user.is2FAEnabled) {
-      if (!twoFAToken) return res.json({ success: false, require2FA: true, message: '请输入 2FA 验证码' });
+      if (!twoFAToken) {
+        return res.json({ success: false, require2FA: true, message: '请输入 2FA 动态验证码' });
+      }
       const isValid = authenticator.check(twoFAToken, user.twoFASecret);
-      if (!isValid) return res.status(400).json({ error: '2FA 验证码错误或已过期！' });
+      if (!isValid) {
+        return res.status(400).json({ error: '2FA 验证码错误或已过期！' });
+      }
     }
 
     const { password: _, twoFASecret: __, ...userInfo } = user.toObject();
     res.json({ success: true, user: userInfo });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// 生成 2FA 密钥与二维码
 app.post('/api/user/generate-2fa', async (req, res) => {
   const { username } = req.body;
   try {
@@ -100,9 +122,12 @@ app.post('/api/user/generate-2fa', async (req, res) => {
     const qrCodeUrl = await QRCode.toDataURL(otpauth);
     await User.findOneAndUpdate({ username }, { twoFASecret: secret });
     res.json({ success: true, secret, qrCodeUrl });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// 验证并绑定 2FA
 app.post('/api/user/verify-2fa', async (req, res) => {
   const { username, token } = req.body;
   try {
@@ -111,57 +136,83 @@ app.post('/api/user/verify-2fa', async (req, res) => {
       user.is2FAEnabled = true;
       await user.save();
       const { password: _, twoFASecret: __, ...userInfo } = user.toObject();
-      res.json({ success: true, user: userInfo, message: '2FA 双因素认证激活成功！' });
+      res.json({ success: true, user: userInfo, message: '2FA 双因素安全保护激活成功！' });
     } else {
-      res.status(400).json({ error: '2FA 验证码错误！' });
+      res.status(400).json({ error: '验证码错误，请检查验证器 App 中的 6 位数字！' });
     }
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// 获取商城列表
 app.get('/api/shop/items', async (req, res) => {
-  res.json({ success: true, items: await Item.find() });
+  try {
+    const items = await Item.find();
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// 购买商城道具
 app.post('/api/shop/buy', async (req, res) => {
   const { username, itemId } = req.body;
-  const user = await User.findOne({ username });
-  const item = await Item.findOne({ itemId });
-  if (!user || !item) return res.status(400).json({ error: '数据不存在' });
-  if (user.coins < item.price) return res.status(400).json({ error: '余额不足' });
+  try {
+    const user = await User.findOne({ username });
+    const item = await Item.findOne({ itemId });
+    if (!user || !item) return res.status(400).json({ error: '数据不存在' });
+    if (user.coins < item.price) return res.status(400).json({ error: '金币余额不足' });
 
-  user.coins -= item.price;
-  user.inventory.push(itemId);
-  if (item.type === 'SKIN') user.equippedCardSkin = itemId;
-  if (item.type === 'AVATAR') user.avatar = item.icon;
-  await user.save();
+    user.coins -= item.price;
+    user.inventory.push(itemId);
+    if (item.type === 'SKIN') user.equippedCardSkin = itemId;
+    if (item.type === 'AVATAR') user.avatar = item.icon;
+    await user.save();
 
-  const { password: _, twoFASecret: __, ...userInfo } = user.toObject();
-  res.json({ success: true, user: userInfo, message: `购买并装备【${item.name}】成功！` });
+    const { password: _, twoFASecret: __, ...userInfo } = user.toObject();
+    res.json({ success: true, user: userInfo, message: `成功购买并装备了【${item.name}】！` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Admin 后台：获取所有玩家
 app.get('/api/admin/users', async (req, res) => {
-  res.json({ success: true, users: await User.find({}, '-password -twoFASecret') });
+  try {
+    const users = await User.find({}, '-password -twoFASecret');
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Admin 后台：调整金币
 app.post('/api/admin/update-coins', async (req, res) => {
   const { username, amount } = req.body;
-  const user = await User.findOneAndUpdate({ username }, { $inc: { coins: amount } }, { new: true });
-  res.json({ success: true, user });
+  try {
+    const user = await User.findOneAndUpdate({ username }, { $inc: { coins: amount } }, { new: true });
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// --- Socket.IO 房间系统（修复人数检测与多模式）---
+// ==========================================
+// 3. Socket.IO 多模式实时对局逻辑
+// ==========================================
 const rooms = {};
 
 io.on('connection', (socket) => {
-  // 创建房间
+  // 创建房间（支持选择人数模式: 2人, 3人, 5人）
   socket.on('create_room', async ({ roomId, username, mode = 2, subMode = 'LANDLORD' }) => {
-    if (rooms[roomId]) return socket.emit('error_message', '房间号已使用，请更换！');
+    if (rooms[roomId]) return socket.emit('error_message', '房间号已被占用，请尝试其他房间号！');
     const user = await User.findOne({ username });
 
     const maxPlayers = parseInt(mode, 10);
     rooms[roomId] = {
       id: roomId,
-      maxPlayers: maxPlayers, // 关键：精准记录该房间的人数上限（2，3 或 5）
+      maxPlayers: maxPlayers, // 精确保存设定人数
       subMode: subMode,
       players: [{ id: socket.id, username, coins: user ? user.coins : 0, avatar: user ? user.avatar : '🤖' }],
       status: 'waiting',
@@ -174,14 +225,14 @@ io.on('connection', (socket) => {
     socket.emit('room_created', { roomId, room: rooms[roomId] });
   });
 
-  // 加入房间（严格检测人数）
+  // 加入房间
   socket.on('join_room', async ({ roomId, username }) => {
     const room = rooms[roomId];
     if (!room) return socket.emit('error_message', '房间不存在！');
-    
-    // 【人数逻辑修复点 1】：加入前判断人数是否已满
+
+    // 检测人数限制，杜绝未满员开局
     if (room.players.length >= room.maxPlayers) {
-      return socket.emit('error_message', `该房间已被占满（当前设定为 ${room.maxPlayers} 人局）！`);
+      return socket.emit('error_message', `房间已满（上限 ${room.maxPlayers} 人）！`);
     }
 
     const user = await User.findOne({ username });
@@ -190,20 +241,21 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('room_updated', room);
 
-    // 【人数逻辑修复点 2】：仅在房间人数严格等于 maxPlayers 时才触发游戏开始！
+    // 只有在人员严格满员（等于 maxPlayers）时才启动比赛
     if (room.players.length === room.maxPlayers) {
       room.status = 'playing';
       room.turnIndex = Math.floor(Math.random() * room.maxPlayers);
       const firstPlayer = room.players[room.turnIndex];
 
       io.to(roomId).emit('game_start', {
-        message: `🎉 所有人到齐！【${room.maxPlayers}人模式】由【${firstPlayer.username}】先手出牌！`,
+        message: `🎉 成员已集齐！【${room.maxPlayers}人模式】由【${firstPlayer.username}】先手出牌！`,
         room,
         currentTurnSocketId: firstPlayer.id
       });
     }
   });
 
+  // 玩家出牌
   socket.on('play_cards', ({ roomId, handInfo }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -217,12 +269,13 @@ io.on('connection', (socket) => {
       type: handInfo.type,
       value: handInfo.value,
       length: handInfo.length,
-      cardsText: handInfo.cardsText
+      rawCards: handInfo.rawCards
     };
-    room.passCount = 0;
+    room.passCount = 0; // 出牌后重置 Pass 计数器
 
     io.to(roomId).emit('cards_played', room.lastPlayedHand);
 
+    // 回合推进给下一位玩家
     room.turnIndex = (room.turnIndex + 1) % room.maxPlayers;
     const nextPlayer = room.players[room.turnIndex];
 
@@ -233,6 +286,7 @@ io.on('connection', (socket) => {
     });
   });
 
+  // 玩家 Pass 不出
   socket.on('pass_turn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -241,14 +295,18 @@ io.on('connection', (socket) => {
     if (currentTurnPlayer.id !== socket.id) return;
 
     room.passCount++;
+
+    // 【核心关键修复】：如果其他所有人都 Pass，彻底清空桌面，赋予新回合首发自由出牌权
     if (room.passCount >= room.maxPlayers - 1) {
-      room.lastPlayedHand = null; // 所有人 Pass，清空上家出牌
+      room.lastPlayedHand = null;
+      room.passCount = 0;
     }
 
     io.to(roomId).emit('cards_played', {
       playerId: socket.id,
       username: currentTurnPlayer.username,
-      cardsText: '不出 / 要不起'
+      cardsText: '不出 / PASS',
+      isClear: room.lastPlayedHand === null // 标志桌面是否已被清空
     });
 
     room.turnIndex = (room.turnIndex + 1) % room.maxPlayers;
@@ -257,10 +315,11 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('turn_changed', {
       currentTurnSocketId: nextPlayer.id,
       username: nextPlayer.username,
-      lastPlayedHand: room.lastPlayedHand
+      lastPlayedHand: room.lastPlayedHand // 若已清空则返回 null
     });
   });
 
+  // 对局结束与金币结算
   socket.on('game_over', async ({ roomId, winnerUsername }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -275,7 +334,7 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('game_result', {
         winner: winnerUsername,
         reward: 300,
-        message: `🏆 恭喜玩家 【${winnerUsername}】 获得胜利！结算加成 +300 金币！`
+        message: `🏆 恭喜玩家 【${winnerUsername}】 获得本局胜利！金币 +300！`
       });
       delete rooms[roomId];
     } catch (err) {
@@ -283,6 +342,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 断线清理
   socket.on('disconnect', () => {
     for (const roomId in rooms) {
       const room = rooms[roomId];
@@ -297,5 +357,6 @@ io.on('connection', (socket) => {
   });
 });
 
+// 启动端口服务
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 服务运行于端口: ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 赛博斗地主后端服务运行于端口: ${PORT}`));
