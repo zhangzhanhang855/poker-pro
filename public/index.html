@@ -3,105 +3,132 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>JR AI 欢乐斗地主 - 高级全栈版</title>
+  <title>CYBER LANDLORD - 赛博斗地主 2FA 旗舰版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
-      --primary-gold: #facc15;
-      --gold-dark: #b45309;
-      --bg-dark: #090d16;
-      --glass-panel: rgba(18, 26, 43, 0.75);
-      --glass-border: rgba(255, 215, 0, 0.2);
+      --cyber-pink: #ff007f;
+      --cyber-cyan: #00f0ff;
+      --cyber-yellow: #facc15;
+      --cyber-purple: #7000ff;
+      --bg-dark: #05070f;
+      --panel-bg: rgba(10, 15, 29, 0.88);
+      --border-cyber: rgba(0, 240, 255, 0.3);
+      --shadow-cyber: 0 0 25px rgba(0, 240, 255, 0.2);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Courier New', Consolas, "PingFang SC", sans-serif; }
     html, body { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-dark); display: flex; justify-content: center; align-items: center; }
+
+    /* 背景网格微效果 */
+    body::before {
+      content: ''; position: absolute; width: 200%; height: 200%;
+      background: linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px; pointer-events: none; z-index: 0;
+    }
 
     #game-container {
       position: relative; width: 100vw; height: 100vh;
       max-width: 1280px; max-height: 720px;
-      background: radial-gradient(circle at 50% 30%, #1a2942 0%, #070b12 100%);
-      box-shadow: 0 0 80px rgba(0, 0, 0, 0.9); overflow: hidden;
+      background: radial-gradient(circle at 50% 30%, #0d1527 0%, #03050a 100%);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 80px rgba(0, 240, 255, 0.15); overflow: hidden;
+      display: flex; z-index: 1;
     }
 
     #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
 
-    .ui-layer {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
-      pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 16px;
+    /* 侧边栏 Sidebar */
+    .sidebar {
+      width: 230px; height: 100%;
+      background: rgba(8, 12, 23, 0.95); backdrop-filter: blur(16px);
+      border-right: 1px solid var(--border-cyber);
+      z-index: 50; display: flex; flex-direction: column; justify-content: space-between;
+      padding: 20px 14px; pointer-events: auto;
     }
 
+    .sidebar-brand h2 {
+      font-size: 1.2rem;
+      background: linear-gradient(135deg, var(--cyber-cyan) 0%, var(--cyber-pink) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      font-weight: 900; letter-spacing: 2px; text-align: center;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+    }
+
+    .sidebar-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 8px;
+      color: #8a99ad; font-size: 13px; font-weight: bold;
+      cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+    }
+    .nav-item:hover { background: rgba(0, 240, 255, 0.08); color: #fff; border-color: rgba(0, 240, 255, 0.2); }
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(255, 0, 127, 0.1) 100%);
+      border-color: var(--cyber-cyan); color: var(--cyber-cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+
+    .sidebar-user {
+      background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 10px;
+    }
+
+    /* 极客 UI 组件 */
+    .main-viewport { flex: 1; height: 100%; position: relative; pointer-events: none; z-index: 10; }
     .hidden { display: none !important; }
 
-    /* 顶部导航与玩家卡片 */
-    .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-    .user-badge {
-      display: flex; align-items: center; background: var(--glass-panel);
-      backdrop-filter: blur(12px); border: 1px solid var(--glass-border);
-      padding: 6px 16px; border-radius: 30px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-    }
-    .avatar-frame { font-size: 24px; margin-right: 10px; filter: drop-shadow(0 0 5px rgba(250, 204, 21, 0.6)); }
-    .user-name { color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.5px; }
-    .user-coins { color: var(--primary-gold); font-size: 12px; font-weight: bold; margin-top: 2px; }
-
-    .nav-buttons { display: flex; gap: 10px; pointer-events: auto; }
-
-    .btn {
-      padding: 10px 22px; border-radius: 24px; border: none; font-size: 14px; font-weight: bold;
-      cursor: pointer; outline: none; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); pointer-events: auto; display: inline-flex; align-items: center; justify-content: center;
-    }
-    .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
-    .btn:active { transform: scale(0.94); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
-
-    .btn-gold { background: linear-gradient(180deg, #fde047 0%, #d97706 100%); color: #451a03; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); }
-    .btn-blue { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color: #fff; }
-    .btn-green { background: linear-gradient(180deg, #4ade80 0%, #15803d 100%); color: #fff; }
-    .btn-purple { background: linear-gradient(180deg, #c084fc 0%, #7e22ce 100%); color: #fff; }
-    .btn-dark { background: linear-gradient(180deg, #475569 0%, #1e293b 100%); color: #f1f5f9; border: 1px solid rgba(255, 255, 255, 0.1); }
-
-    .action-bar { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 20; }
-    .turn-tip {
-      position: absolute; bottom: 175px; left: 50%; transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
-      border: 1px solid var(--primary-gold); padding: 6px 20px; border-radius: 20px;
-      color: var(--primary-gold); font-weight: bold; font-size: 13px; pointer-events: none;
-      box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);
+    .view-panel {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: var(--panel-bg); backdrop-filter: blur(16px);
+      border: 1px solid var(--cyber-cyan); border-radius: 16px;
+      padding: 28px; width: 90%; max-width: 440px; text-align: center;
+      box-shadow: var(--shadow-cyber); pointer-events: auto; z-index: 20;
     }
 
-    /* 模态框与面板 */
-    .modal-overlay {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(4, 7, 13, 0.85); backdrop-filter: blur(12px); z-index: 100;
-      display: flex; justify-content: center; align-items: center; pointer-events: auto;
-    }
-    .modal-card {
-      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-      border: 1.5px solid var(--glass-border); border-radius: 24px; padding: 28px;
-      width: 90%; max-width: 420px; text-align: center;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-    }
-    .modal-title { font-size: 22px; color: var(--primary-gold); margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; }
+    .panel-title { font-size: 20px; color: var(--cyber-cyan); margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 8px var(--cyber-cyan); }
 
     .input-field {
-      width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155;
-      background: rgba(15, 23, 42, 0.8); color: #fff; font-size: 14px; margin-bottom: 14px; outline: none;
-      transition: border-color 0.2s;
+      width: 100%; padding: 12px 16px; border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.3); background: rgba(5, 7, 15, 0.8);
+      color: #fff; font-size: 14px; margin-bottom: 14px; outline: none; transition: all 0.2s;
     }
-    .input-field:focus { border-color: #38bdf8; }
+    .input-field:focus { border-color: var(--cyber-pink); box-shadow: 0 0 10px rgba(255, 0, 127, 0.4); }
 
-    /* Tab 选项卡 */
-    .auth-tabs { display: flex; margin-bottom: 16px; border-bottom: 1px solid #334155; }
-    .auth-tab { flex: 1; padding: 10px; color: #94a3b8; font-weight: bold; cursor: pointer; }
-    .auth-tab.active { color: var(--primary-gold); border-bottom: 2px solid var(--primary-gold); }
+    .btn {
+      padding: 12px 24px; border-radius: 8px; border: none; font-size: 13px; font-weight: 900;
+      cursor: pointer; outline: none; transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); pointer-events: auto;
+      display: inline-flex; align-items: center; justify-content: center; text-transform: uppercase;
+    }
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
+    .btn:active { transform: scale(0.95); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
-    /* 商城网格 */
+    .btn-cyber { background: linear-gradient(135deg, var(--cyber-cyan) 0%, #0072ff 100%); color: #000; }
+    .btn-pink { background: linear-gradient(135deg, var(--cyber-pink) 0%, var(--cyber-purple) 100%); color: #fff; }
+    .btn-gold { background: linear-gradient(135deg, var(--cyber-yellow) 0%, #d97706 100%); color: #000; }
+    .btn-dark { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.15); }
+
+    .action-bar { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 20; pointer-events: auto; }
+    .turn-tip {
+      position: absolute; bottom: 175px; left: 50%; transform: translateX(-50%);
+      background: rgba(5, 7, 15, 0.9); border: 1px solid var(--cyber-cyan);
+      padding: 6px 20px; border-radius: 20px; color: var(--cyber-cyan);
+      font-weight: bold; font-size: 13px; pointer-events: none; box-shadow: var(--shadow-cyber);
+    }
+
+    .auth-tabs { display: flex; margin-bottom: 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+    .auth-tab { flex: 1; padding: 10px; color: #8a99ad; font-weight: bold; cursor: pointer; }
+    .auth-tab.active { color: var(--cyber-cyan); border-bottom: 2px solid var(--cyber-cyan); }
+
     .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 260px; overflow-y: auto; margin-bottom: 18px; }
-    .shop-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 12px; text-align: center; }
-    .shop-icon { font-size: 32px; margin-bottom: 6px; }
-    .shop-title { color: #fff; font-size: 13px; font-weight: bold; }
-    .shop-price { color: var(--primary-gold); font-size: 12px; margin: 6px 0; }
+    .shop-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 12px; padding: 12px; text-align: center; }
+
+    /* 2FA 专属样式 */
+    .qr-container { background: #fff; padding: 12px; border-radius: 8px; display: inline-block; margin: 12px 0; }
+    .qr-container img { width: 140px; height: 140px; display: block; }
   </style>
 </head>
 <body>
@@ -109,78 +136,92 @@
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
-    <div class="ui-layer">
-      <div class="top-bar">
-        <div class="user-badge">
-          <div class="avatar-frame" id="my-avatar">👑</div>
-          <div>
-            <div class="user-name" id="my-name">未登录</div>
-            <div class="user-coins">🪙 <span id="my-coins">0</span></div>
+    <!-- 侧边栏 Sidebar -->
+    <div class="sidebar hidden" id="main-sidebar">
+      <div>
+        <div class="sidebar-brand">
+          <h2>CYBER LANDLORD</h2>
+          <p style="color: #64748b; font-size: 9px; margin-top: 4px; letter-spacing: 1px;">2FA SECURED V3.0</p>
+        </div>
+
+        <div class="sidebar-menu">
+          <div class="nav-item active" id="nav-lobby" onclick="gameApp.switchView('lobby')">
+            <span>🎮</span> 赛博大厅
+          </div>
+          <div class="nav-item" id="nav-shop" onclick="gameApp.switchView('shop')">
+            <span>🛒</span> 装备商城
+          </div>
+          <div class="nav-item" id="nav-2fa" onclick="gameApp.switchView('2fa')">
+            <span>🔐</span> 2FA 安全锁
           </div>
         </div>
-
-        <div class="nav-buttons hidden" id="lobby-nav">
-          <button class="btn btn-purple" onclick="gameApp.openShop()">🛒 商城道具</button>
-          <button class="btn btn-dark" onclick="gameApp.openSettings()">⚙️ 个人设置</button>
-        </div>
       </div>
 
-      <div class="turn-tip hidden" id="turn-tip">等待房间匹配...</div>
+      <div class="sidebar-user">
+        <div style="font-size:24px;" id="sidebar-avatar">🤖</div>
+        <div>
+          <div style="color:#fff; font-size:13px; font-weight:bold;" id="sidebar-username">玩家</div>
+          <div style="color:var(--cyber-yellow); font-size:12px;">🪙 <span id="sidebar-coins">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧画板区 -->
+    <div class="main-viewport">
+      <div class="turn-tip hidden" id="turn-tip">SYSTEM: WAITING...</div>
 
       <div class="action-bar hidden" id="action-bar">
-        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">不出</button>
-        <button class="btn btn-blue" onclick="gameApp.sortHand()">理牌</button>
-        <button class="btn btn-green" id="btn-play" onclick="gameApp.playCards()">出牌</button>
+        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">PASS</button>
+        <button class="btn btn-cyber" onclick="gameApp.sortHand()">理牌</button>
+        <button class="btn btn-pink" id="btn-play" onclick="gameApp.playCards()">确认出牌</button>
       </div>
-    </div>
 
-    <!-- 1. 登录/注册 高级双模态框 -->
-    <div class="modal-overlay" id="auth-modal">
-      <div class="modal-card">
-        <div class="modal-title">JR AI 竞技斗地主</div>
+      <!-- 1. 登录/注册/2FA 交互面板 -->
+      <div class="view-panel" id="panel-auth">
+        <div class="panel-title">CYBER AUTHENTICATION</div>
         <div class="auth-tabs">
-          <div class="auth-tab active" id="tab-login" onclick="gameApp.switchAuthTab('login')">账号登录</div>
-          <div class="auth-tab" id="tab-register" onclick="gameApp.switchAuthTab('register')">注册新账号</div>
+          <div class="auth-tab active" id="tab-login" onclick="gameApp.switchAuthTab('login')">登录</div>
+          <div class="auth-tab" id="tab-register" onclick="gameApp.switchAuthTab('register')">注册</div>
         </div>
 
-        <input type="text" id="auth-username" class="input-field" placeholder="请输入用户名" value="JR玩家" />
-        <input type="password" id="auth-password" class="input-field" placeholder="请输入密码" value="123456" />
+        <input type="text" id="auth-username" class="input-field" placeholder="玩家账号" value="JR玩家" />
+        <input type="password" id="auth-password" class="input-field" placeholder="密码" value="123456" />
+        <input type="text" id="auth-2fa-input" class="input-field hidden" placeholder="输入 6 位 2FA 动态验证码" maxlength="6" />
 
-        <button class="btn btn-gold" id="auth-submit-btn" style="width: 100%; margin-top: 8px;" onclick="gameApp.handleAuth()">立即登录</button>
+        <button class="btn btn-cyber" id="auth-submit-btn" style="width: 100%; margin-top: 6px;" onclick="gameApp.handleAuth()">访问节点</button>
       </div>
-    </div>
 
-    <!-- 2. 大厅控制面板 -->
-    <div class="modal-overlay hidden" id="lobby-modal">
-      <div class="modal-card">
-        <div class="modal-title">对局大厅</div>
-        <input type="text" id="room-input" class="input-field" placeholder="输入房间号 (例如: 888)" value="888" />
-        <div style="display: flex; gap: 12px; margin-top: 8px;">
-          <button class="btn btn-blue" style="flex: 1;" onclick="gameApp.createRoom()">创建新房间</button>
-          <button class="btn btn-green" style="flex: 1;" onclick="gameApp.joinRoom()">快速加入</button>
+      <!-- 2. 赛博大厅面板 -->
+      <div class="view-panel hidden" id="panel-lobby">
+        <div class="panel-title">🎮 竞技对局大厅</div>
+        <input type="text" id="room-input" class="input-field" placeholder="房间加密频段 (例如: 888)" value="888" />
+        <div style="display: flex; gap: 12px; margin-top: 6px;">
+          <button class="btn btn-cyber" style="flex: 1;" onclick="gameApp.createRoom()">构建节点</button>
+          <button class="btn btn-pink" style="flex: 1;" onclick="gameApp.joinRoom()">快速接入</button>
         </div>
       </div>
-    </div>
 
-    <!-- 3. 个人设置弹窗 -->
-    <div class="modal-overlay hidden" id="settings-modal">
-      <div class="modal-card">
-        <div class="modal-title">⚙️ 个人账号设置</div>
-        <input type="text" id="set-avatar" class="input-field" placeholder="自定义头像 Emoji (例如: 🤖, 🐉, 👑)" />
-        <input type="password" id="set-new-password" class="input-field" placeholder="修改新密码 (不修改请留空)" />
-        <div style="display: flex; gap: 10px; margin-top: 8px;">
-          <button class="btn btn-gold" style="flex: 1;" onclick="gameApp.saveSettings()">保存更改</button>
-          <button class="btn btn-dark" style="flex: 1;" onclick="gameApp.closeModal('settings-modal')">关闭</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. 商城弹窗 -->
-    <div class="modal-overlay hidden" id="shop-modal">
-      <div class="modal-card">
-        <div class="modal-title">🛒 道具皮肤商城</div>
+      <!-- 3. 商城面板 -->
+      <div class="view-panel hidden" id="panel-shop">
+        <div class="panel-title">🛒 赛博装备商城</div>
         <div class="shop-grid" id="shop-grid"></div>
-        <button class="btn btn-dark" style="width: 100%;" onclick="gameApp.closeModal('shop-modal')">关闭商城</button>
+        <button class="btn btn-dark" style="width: 100%;" onclick="gameApp.switchView('lobby')">返回大厅</button>
+      </div>
+
+      <!-- 4. 2FA 双因素安全配置面板 -->
+      <div class="view-panel hidden" id="panel-2fa">
+        <div class="panel-title">🔐 2FA 安全验证绑定</div>
+        <p style="color:#8a99ad; font-size:12px; margin-bottom:10px;">使用 Authenticator / Google 验证码 App 扫描下方二维码：</p>
+        
+        <div id="2fa-setup-box">
+          <button class="btn btn-gold" onclick="gameApp.generate2FA()">生成 2FA 二维码</button>
+        </div>
+
+        <div id="2fa-qr-box" class="hidden">
+          <div class="qr-container"><img id="2fa-qr-img" src="" alt="2FA QR" /></div>
+          <input type="text" id="verify-2fa-input" class="input-field" placeholder="输入 App 上的 6 位数字" maxlength="6" />
+          <button class="btn btn-cyber" style="width:100%" onclick="gameApp.verify2FA()">确认激活 2FA 保护</button>
+        </div>
       </div>
     </div>
   </div>
@@ -201,15 +242,11 @@
         const values = sorted.map(c => c.value);
         const freq = {};
         values.forEach(v => freq[v] = (freq[v] || 0) + 1);
-        const counts = Object.values(freq);
 
-        if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2, name: '王炸' };
-        if (len === 1) return { type: 'SINGLE', value: values[0], length: 1, name: '单张' };
-        if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2, name: '对子' };
-        if (len === 3 && counts.length === 1) return { type: 'TRIPLE', value: values[0], length: 3, name: '三张' };
-        if (len === 4 && counts.length === 1) return { type: 'BOMB', value: values[0], length: 4, name: '炸弹' };
-        if (len >= 5 && counts.every(c => c === 1) && values[len - 1] < 15 && (values[len - 1] - values[0] === len - 1)) return { type: 'STRAIGHT', value: values[len - 1], length: len, name: '顺子' };
-
+        if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2 };
+        if (len === 1) return { type: 'SINGLE', value: values[0], length: 1 };
+        if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2 };
+        if (len === 4 && Object.keys(freq).length === 1) return { type: 'BOMB', value: values[0], length: 4 };
         return null;
       }
 
@@ -277,36 +314,53 @@
         }
       }
 
+      switchView(viewName) {
+        ['panel-lobby', 'panel-shop', 'panel-2fa'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        ['nav-lobby', 'nav-shop', 'nav-2fa'].forEach(id => document.getElementById(id).classList.remove('active'));
+
+        document.getElementById(`panel-${viewName}`).classList.remove('hidden');
+        document.getElementById(`nav-${viewName}`).classList.add('active');
+
+        if (viewName === 'shop') this.loadShopItems();
+      }
+
       switchAuthTab(tab) {
         this.authMode = tab;
         document.getElementById('tab-login').className = `auth-tab ${tab === 'login' ? 'active' : ''}`;
         document.getElementById('tab-register').className = `auth-tab ${tab === 'register' ? 'active' : ''}`;
-        document.getElementById('auth-submit-btn').innerText = tab === 'login' ? '立即登录' : '注册新账号';
       }
 
       async handleAuth() {
         const username = document.getElementById('auth-username').value.trim();
         const password = document.getElementById('auth-password').value.trim();
-        if (!username || !password) return alert('请填全账号与密码');
+        const twoFAToken = document.getElementById('auth-2fa-input').value.trim();
+
+        if (!username || !password) return alert('请输入账号和密码');
 
         const endpoint = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password, twoFAToken })
         });
         const data = await res.json();
 
+        if (data.require2FA) {
+          document.getElementById('auth-2fa-input').classList.remove('hidden');
+          alert(data.message);
+          return;
+        }
+
         if (data.success) {
           if (this.authMode === 'register') {
-            alert('注册成功，请切换至登录！');
+            alert('注册成功！');
             this.switchAuthTab('login');
           } else {
             this.user = data.user;
             this.updateUserUI();
-            document.getElementById('auth-modal').classList.add('hidden');
-            document.getElementById('lobby-modal').classList.remove('hidden');
-            document.getElementById('lobby-nav').classList.remove('hidden');
+            document.getElementById('panel-auth').classList.add('hidden');
+            document.getElementById('main-sidebar').classList.remove('hidden');
+            this.switchView('lobby');
 
             socket = io(window.location.origin);
             this.setupSocketListeners();
@@ -316,35 +370,46 @@
         }
       }
 
-      updateUserUI() {
-        document.getElementById('my-name').innerText = this.user.username;
-        document.getElementById('my-coins').innerText = this.user.coins;
-        document.getElementById('my-avatar').innerText = this.user.avatar || '👑';
-      }
-
-      openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
-      closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-      async saveSettings() {
-        const avatar = document.getElementById('set-avatar').value.trim();
-        const newPassword = document.getElementById('set-new-password').value.trim();
-
-        const res = await fetch('/api/user/update-settings', {
+      async generate2FA() {
+        const res = await fetch('/api/user/generate-2fa', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: this.user.username, avatar, newPassword })
+          body: JSON.stringify({ username: this.user.username })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('2fa-qr-img').src = data.qrCodeUrl;
+          document.getElementById('2fa-setup-box').classList.add('hidden');
+          document.getElementById('2fa-qr-box').classList.remove('hidden');
+        }
+      }
+
+      async verify2FA() {
+        const token = document.getElementById('verify-2fa-input').value.trim();
+        if (!token) return alert('请输入 6 位验证码');
+
+        const res = await fetch('/api/user/verify-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: this.user.username, token })
         });
         const data = await res.json();
         if (data.success) {
           this.user = data.user;
-          this.updateUserUI();
-          alert('个人设置更改成功！');
-          this.closeModal('settings-modal');
+          alert(data.message);
+          this.switchView('lobby');
+        } else {
+          alert(data.error);
         }
       }
 
-      async openShop() {
-        document.getElementById('shop-modal').classList.remove('hidden');
+      updateUserUI() {
+        document.getElementById('sidebar-username').innerText = this.user.username;
+        document.getElementById('sidebar-coins').innerText = this.user.coins;
+        document.getElementById('sidebar-avatar').innerText = this.user.avatar || '🤖';
+      }
+
+      async loadShopItems() {
         const res = await fetch('/api/shop/items');
         const data = await res.json();
         if (data.success) {
@@ -353,12 +418,12 @@
             const owned = this.user.inventory.includes(item.itemId);
             return `
               <div class="shop-card">
-                <div class="shop-icon">${item.icon}</div>
-                <div class="shop-title">${item.name}</div>
-                <div class="shop-price">🪙 ${item.price} 金币</div>
-                <button class="btn btn-gold" style="font-size:11px; padding:4px 10px;" 
+                <div style="font-size:32px;">${item.icon}</div>
+                <div style="color:#fff; font-size:12px; font-weight:bold;">${item.name}</div>
+                <div style="color:var(--cyber-yellow); font-size:12px; margin:4px 0;">🪙 ${item.price}</div>
+                <button class="btn btn-gold" style="font-size:10px; padding:4px 8px;" 
                   ${owned ? 'disabled' : ''} onclick="gameApp.buyItem('${item.itemId}')">
-                  ${owned ? '已拥有' : '购买'}
+                  ${owned ? 'EQUIPPED' : 'PURCHASE'}
                 </button>
               </div>
             `;
@@ -377,7 +442,7 @@
           this.user = data.user;
           this.updateUserUI();
           alert(data.message);
-          this.openShop();
+          this.loadShopItems();
         } else {
           alert(data.error);
         }
@@ -387,7 +452,8 @@
         socket.on('room_created', ({ room }) => this.roomId = room.id);
         socket.on('game_start', ({ message, currentTurnSocketId }) => {
           alert(message);
-          document.getElementById('lobby-modal').classList.add('hidden');
+          document.getElementById('panel-lobby').classList.add('hidden');
+          document.getElementById('main-sidebar').classList.add('hidden');
           document.getElementById('action-bar').classList.remove('hidden');
           document.getElementById('turn-tip').classList.remove('hidden');
           this.dealCards();
@@ -409,7 +475,7 @@
         document.getElementById('btn-pass').disabled = !this.isMyTurn || !this.lastPlayedHand || this.lastPlayedHand.playerId === socket.id;
 
         const turnTip = document.getElementById('turn-tip');
-        turnTip.innerText = this.isMyTurn ? "👉 轮到你的回合，请选择出牌！" : `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
+        turnTip.innerText = this.isMyTurn ? "👉 你的出牌回合！" : `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
       }
 
       createRoom() { socket.emit('create_room', { roomId: document.getElementById('room-input').value.trim(), username: this.user.username }); }
@@ -432,7 +498,7 @@
         const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
         const handInfo = CardRulesEngine.parseCards(selectedCards);
         if (!handInfo) return alert('非法的出牌组合！');
-        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return alert('出的牌无法压过上家！');
+        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) return alert('无法压过上家的牌！');
 
         handInfo.cardsText = selectedCards.map(c => (c.suit || '') + c.rank).join(' ');
         socket.emit('play_cards', { roomId: this.roomId, handInfo });
@@ -447,18 +513,20 @@
       renderLoop() {
         this.ctx.clearRect(0, 0, this.width, this.height);
 
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-        this.ctx.font = '900 32px sans-serif';
+        // 赛博朋克画板文字
+        this.ctx.fillStyle = 'rgba(0, 240, 255, 0.05)';
+        this.ctx.font = '900 36px "Courier New"';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('JR AI 竞技斗地主', this.width / 2, this.height / 2 - 30);
+        this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 30);
 
         if (this.tableCards.length > 0) {
           const last = this.tableCards[this.tableCards.length - 1];
-          this.ctx.fillStyle = '#facc15';
-          this.ctx.font = 'bold 16px sans-serif';
+          this.ctx.fillStyle = '#00f0ff';
+          this.ctx.font = 'bold 16px "Courier New"';
           this.ctx.fillText(`${last.username}: ${last.cardsText || last.cards}`, this.width / 2, this.height / 2 + 20);
         }
 
+        // 赛博高发光扑克牌绘制
         if (this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = Math.min(60, (this.width - 40) / total);
@@ -472,19 +540,24 @@
             const isSelected = this.selectedIndices.has(i);
             const drawY = isSelected ? startY - 16 : startY;
 
-            // 依据已装备皮肤改变牌面渲染颜色
-            this.ctx.fillStyle = (this.user && this.user.equippedCardSkin === 'skin_gold') ? '#0f172a' : '#ffffff';
+            // 赛博牌面底色
+            this.ctx.fillStyle = '#0a0f1d';
             this.ctx.beginPath();
             this.ctx.roundRect(x, drawY, cardW, cardH, 6);
             this.ctx.fill();
 
-            this.ctx.lineWidth = isSelected ? 2 : 1;
-            this.ctx.strokeStyle = isSelected ? '#38bdf8' : '#cbd5e1';
+            // 霓虹发光边框
+            this.ctx.lineWidth = isSelected ? 2.5 : 1;
+            this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
+            this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
+            this.ctx.shadowBlur = isSelected ? 12 : 0;
             this.ctx.stroke();
 
+            this.ctx.shadowColor = 'transparent';
+
             const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
-            this.ctx.fillStyle = isRed ? '#e11d48' : (this.user && this.user.equippedCardSkin === 'skin_gold' ? '#facc15' : '#0f172a');
-            this.ctx.font = 'bold 14px monospace';
+            this.ctx.fillStyle = isRed ? '#ff007f' : '#00f0ff';
+            this.ctx.font = 'bold 14px "Courier New"';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(card.rank, x + 4, drawY + 16);
 
