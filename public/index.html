@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 隔离渲染零崩溃稳定版</title>
+  <title>CYBER LANDLORD - 桌面渲染解耦完美版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -157,7 +157,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">ISOLATED STACK V23.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">TABLE RENDER FIX V24.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -323,8 +323,8 @@
         this.aiHands = [[], []];
         this.selectedIndices = new Set();
         
-        this.tablePlayedHand = null; 
-        this.lastPlayedHand = null;
+        this.tablePlayedHand = null; // 桌面渲染用 (绝不随 Pass 清空)
+        this.lastPlayedHand = null;  // 规则比牌判定用
         this.isMyTurn = false;
 
         this.initCanvasSize();
@@ -554,11 +554,9 @@
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
+        // 🔥【核心修复点 1】：只更新打牌数据，绝对不把桌面牌表置空！
         socket.on('cards_played', (data) => {
-          if (data.isClear) {
-            this.tablePlayedHand = null;
-            this.lastPlayedHand = null;
-          } else if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
+          if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
             this.tablePlayedHand = {
               username: data.username || '玩家',
               rawCards: [...data.rawCards]
@@ -576,7 +574,6 @@
 
         if (isTableCleared) {
           this.lastPlayedHand = null;
-          this.tablePlayedHand = null;
         } else {
           this.lastPlayedHand = lastPlayedHand;
         }
@@ -679,10 +676,10 @@
             document.getElementById('btn-play').disabled = false;
             document.getElementById('btn-pass').disabled = false;
             
+            // 🔥【核心修复点 2】：全员 Pass 时只把规则判定 lastPlayedHand 重置为 null，绝不清空 tablePlayedHand 桌面画牌！
             const isUserLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === 'me');
             if (isUserLeading) {
               this.lastPlayedHand = null;
-              this.tablePlayedHand = null;
             }
 
             document.getElementById('turn-tip').innerText = (this.lastPlayedHand === null) ? "👉 所有人 PASS，你获得自由出牌权！" : "👉 轮到你选择压牌或 PASS！";
@@ -728,15 +725,18 @@
 
         handInfo.rawCards = selectedCards;
 
+        // 本地切牌
         sortedIndices.forEach(index => {
           this.myHand.splice(index, 1);
         });
 
         this.selectedIndices.clear();
 
+        // 🔥【核心修复点 3】：出牌立即更新桌面渲染牌，不给网络延迟或被删留下任何缝隙
+        this.tablePlayedHand = { username: this.user.username, rawCards: handInfo.rawCards };
+
         if (this.isAIMode) {
           handInfo.playerId = 'me';
-          this.tablePlayedHand = { username: this.user.username, rawCards: handInfo.rawCards };
           this.lastPlayedHand = handInfo;
 
           if (this.myHand.length === 0) {
@@ -776,25 +776,22 @@
         }
       }
 
-      // =========================================================================
-      // 🔥 隔离式矢量花色绘制：加入 save/restore 防闭合路径污染，绝不崩盘中断！
-      // =========================================================================
       drawVectorSuit(suitType, cx, cy, size, color) {
         this.ctx.save();
         this.ctx.fillStyle = color;
         this.ctx.beginPath();
 
-        if (suitType === '♥') { // 红桃
+        if (suitType === '♥') {
           const topCurveHeight = size * 0.3;
           this.ctx.moveTo(cx, cy + size * 0.35);
           this.ctx.bezierCurveTo(cx - size * 0.5, cy, cx - size * 0.5, cy - topCurveHeight, cx, cy - size * 0.1);
           this.ctx.bezierCurveTo(cx + size * 0.5, cy - topCurveHeight, cx + size * 0.5, cy, cx, cy + size * 0.35);
-        } else if (suitType === '♦') { // 方块
+        } else if (suitType === '♦') {
           this.ctx.moveTo(cx, cy - size * 0.4);
           this.ctx.lineTo(cx + size * 0.35, cy);
           this.ctx.lineTo(cx, cy + size * 0.4);
           this.ctx.lineTo(cx - size * 0.35, cy);
-        } else if (suitType === '♠') { // 黑桃
+        } else if (suitType === '♠') {
           this.ctx.moveTo(cx, cy - size * 0.35);
           this.ctx.bezierCurveTo(cx + size * 0.45, cy - size * 0.1, cx + size * 0.4, cy + size * 0.25, cx, cy + size * 0.15);
           this.ctx.bezierCurveTo(cx - size * 0.4, cy + size * 0.25, cx - size * 0.45, cy - size * 0.1, cx, cy - size * 0.35);
@@ -803,7 +800,7 @@
           this.ctx.moveTo(cx, cy + size * 0.1);
           this.ctx.lineTo(cx - size * 0.18, cy + size * 0.4);
           this.ctx.lineTo(cx + size * 0.18, cy + size * 0.4);
-        } else if (suitType === '♣') { // 梅花
+        } else if (suitType === '♣') {
           const r = size * 0.2;
           this.ctx.arc(cx, cy - size * 0.15, r, 0, Math.PI * 2);
           this.ctx.arc(cx - size * 0.18, cy + size * 0.08, r, 0, Math.PI * 2);
@@ -820,19 +817,16 @@
         this.ctx.restore();
       }
 
-      // 扑克牌图层隔离渲染引擎
       drawCardGraphic(cardStr, x, y, cardW, cardH, isSelected = false) {
         if (!cardStr) return;
 
-        this.ctx.save(); // 隔离开始
+        this.ctx.save();
 
-        // 1. 底牌（纯白纸牌面）
         this.ctx.fillStyle = '#ffffff';
         this.ctx.beginPath();
         this.ctx.roundRect(x, y, cardW, cardH, 6);
         this.ctx.fill();
 
-        // 2. 边框 (选中发粉红光)
         this.ctx.lineWidth = isSelected ? 3 : 1.5;
         this.ctx.strokeStyle = isSelected ? '#ff007f' : '#2c3e50';
         if (isSelected) {
@@ -841,7 +835,6 @@
         }
         this.ctx.stroke();
 
-        // 3. 花色与点数渲染
         const isRed = cardStr.includes('♥') || cardStr.includes('♦') || cardStr === '大王';
         const color = isRed ? '#e74c3c' : '#1a252f';
         const isMobile = this.width < 600;
@@ -855,18 +848,16 @@
           const suit = cardStr.charAt(0);
           const rank = cardStr.slice(1);
 
-          // 左上角点数
           this.ctx.fillStyle = color;
           this.ctx.font = `900 ${isMobile ? 13 : 16}px Arial, sans-serif`;
           this.ctx.textAlign = 'left';
           this.ctx.fillText(rank, x + (isMobile ? 4 : 6), y + (isMobile ? 15 : 18));
 
-          // 矢量花色绘制
           const suitSize = isMobile ? 22 : 28;
           this.drawVectorSuit(suit, x + cardW / 2, y + cardH / 2 + (isMobile ? 4 : 6), suitSize, color);
         }
 
-        this.ctx.restore(); // 隔离结束，重置 Context 状态，绝无渲染闭合路径污染！
+        this.ctx.restore();
       }
 
       renderLoop() {
@@ -879,7 +870,7 @@
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
 
-        // 防御性安全渲染牌桌打出的牌
+        // 防御性安全渲染牌桌打出的牌（绝对常驻，绝不消失）
         if (this.tablePlayedHand && Array.isArray(this.tablePlayedHand.rawCards) && this.tablePlayedHand.rawCards.length > 0) {
           const cards = this.tablePlayedHand.rawCards;
           const total = cards.length;
@@ -900,7 +891,7 @@
           });
         }
 
-        // 防御性安全渲染手牌
+        // 渲染底部手牌
         if (Array.isArray(this.myHand) && this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = isMobile ? Math.min(48, (this.width - 20) / total) : Math.min(65, (this.width - 40) / total);
