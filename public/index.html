@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 矢量图形绘制高清版</title>
+  <title>CYBER LANDLORD - 隔离渲染零崩溃稳定版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -157,7 +157,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">VECTOR DRAWING V22.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">ISOLATED STACK V23.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -561,7 +561,7 @@
           } else if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
             this.tablePlayedHand = {
               username: data.username || '玩家',
-              rawCards: data.rawCards
+              rawCards: [...data.rawCards]
             };
           }
         });
@@ -777,7 +777,7 @@
       }
 
       // =========================================================================
-      // 🔥 矢量花色绘制函数：不用任何字体字符，用 Canvas 几何绘制 100% 绝对清晰！
+      // 🔥 隔离式矢量花色绘制：加入 save/restore 防闭合路径污染，绝不崩盘中断！
       // =========================================================================
       drawVectorSuit(suitType, cx, cy, size, color) {
         this.ctx.save();
@@ -799,7 +799,6 @@
           this.ctx.bezierCurveTo(cx + size * 0.45, cy - size * 0.1, cx + size * 0.4, cy + size * 0.25, cx, cy + size * 0.15);
           this.ctx.bezierCurveTo(cx - size * 0.4, cy + size * 0.25, cx - size * 0.45, cy - size * 0.1, cx, cy - size * 0.35);
           this.ctx.fill();
-          // 底座
           this.ctx.beginPath();
           this.ctx.moveTo(cx, cy + size * 0.1);
           this.ctx.lineTo(cx - size * 0.18, cy + size * 0.4);
@@ -810,29 +809,30 @@
           this.ctx.arc(cx - size * 0.18, cy + size * 0.08, r, 0, Math.PI * 2);
           this.ctx.arc(cx + size * 0.18, cy + size * 0.08, r, 0, Math.PI * 2);
           this.ctx.fill();
-          // 底座
           this.ctx.beginPath();
           this.ctx.moveTo(cx, cy + size * 0.05);
           this.ctx.lineTo(cx - size * 0.15, cy + size * 0.4);
           this.ctx.lineTo(cx + size * 0.15, cy + size * 0.4);
         }
+
         this.ctx.closePath();
         this.ctx.fill();
         this.ctx.restore();
       }
 
-      // 扑克牌渲染：白底底牌，标准大黑/大红粗字，矢量图形，100% 任何设备清晰无死角！
+      // 扑克牌图层隔离渲染引擎
       drawCardGraphic(cardStr, x, y, cardW, cardH, isSelected = false) {
         if (!cardStr) return;
 
-        // 1. 扑克牌底牌（高亮纯白 / 微暗极简白卡纸底）
-        this.ctx.save();
+        this.ctx.save(); // 隔离开始
+
+        // 1. 底牌（纯白纸牌面）
         this.ctx.fillStyle = '#ffffff';
         this.ctx.beginPath();
         this.ctx.roundRect(x, y, cardW, cardH, 6);
         this.ctx.fill();
 
-        // 2. 边框 (默认深灰色 / 选中为鲜艳霓虹粉)
+        // 2. 边框 (选中发粉红光)
         this.ctx.lineWidth = isSelected ? 3 : 1.5;
         this.ctx.strokeStyle = isSelected ? '#ff007f' : '#2c3e50';
         if (isSelected) {
@@ -840,35 +840,33 @@
           this.ctx.shadowBlur = 12;
         }
         this.ctx.stroke();
-        this.ctx.restore();
 
-        // 3. 颜色判定（红桃/方块/大王为鲜红；黑桃/梅花/小王为纯黑）
+        // 3. 花色与点数渲染
         const isRed = cardStr.includes('♥') || cardStr.includes('♦') || cardStr === '大王';
         const color = isRed ? '#e74c3c' : '#1a252f';
-
         const isMobile = this.width < 600;
 
         if (cardStr === '大王' || cardStr === '小王') {
-          // 王牌渲染
           this.ctx.fillStyle = color;
           this.ctx.font = `900 ${isMobile ? 12 : 14}px sans-serif`;
           this.ctx.textAlign = 'center';
           this.ctx.fillText(cardStr, x + cardW / 2, y + cardH / 2 + (isMobile ? 4 : 5));
         } else {
-          // 普通牌渲染：拆分花色与点数
           const suit = cardStr.charAt(0);
           const rank = cardStr.slice(1);
 
-          // 左上角点数 (大号粗体)
+          // 左上角点数
           this.ctx.fillStyle = color;
           this.ctx.font = `900 ${isMobile ? 13 : 16}px Arial, sans-serif`;
           this.ctx.textAlign = 'left';
           this.ctx.fillText(rank, x + (isMobile ? 4 : 6), y + (isMobile ? 15 : 18));
 
-          // 居中矢量花色
+          // 矢量花色绘制
           const suitSize = isMobile ? 22 : 28;
           this.drawVectorSuit(suit, x + cardW / 2, y + cardH / 2 + (isMobile ? 4 : 6), suitSize, color);
         }
+
+        this.ctx.restore(); // 隔离结束，重置 Context 状态，绝无渲染闭合路径污染！
       }
 
       renderLoop() {
@@ -881,6 +879,7 @@
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
 
+        // 防御性安全渲染牌桌打出的牌
         if (this.tablePlayedHand && Array.isArray(this.tablePlayedHand.rawCards) && this.tablePlayedHand.rawCards.length > 0) {
           const cards = this.tablePlayedHand.rawCards;
           const total = cards.length;
@@ -901,6 +900,7 @@
           });
         }
 
+        // 防御性安全渲染手牌
         if (Array.isArray(this.myHand) && this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = isMobile ? Math.min(48, (this.width - 20) / total) : Math.min(65, (this.width - 40) / total);
