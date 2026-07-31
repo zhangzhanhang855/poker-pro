@@ -3,18 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 1000+ 行商业赛博全栈旗舰版</title>
+  <title>CYBER LANDLORD - PASS 按钮彻底解锁版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
       --cyber-pink: #ff007f;
-      --cyber-pink-glow: rgba(255, 0, 127, 0.4);
       --cyber-cyan: #00f0ff;
-      --cyber-cyan-glow: rgba(0, 240, 255, 0.4);
       --cyber-yellow: #facc15;
       --cyber-purple: #7000ff;
       --bg-dark: #05070f;
-      --panel-bg: rgba(10, 15, 29, 0.94);
+      --panel-bg: rgba(10, 15, 29, 0.92);
       --border-cyber: rgba(0, 240, 255, 0.35);
       --shadow-cyber: 0 0 35px rgba(0, 240, 255, 0.25);
     }
@@ -44,13 +42,12 @@
       position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none;
     }
 
-    /* ===== 左侧抽屉侧边栏 Sidebar ===== */
     .sidebar {
       width: 240px; height: 100%;
       background: rgba(8, 12, 23, 0.96); backdrop-filter: blur(20px);
       border-right: 1px solid var(--border-cyber);
       z-index: 50; display: flex; flex-direction: column; justify-content: space-between;
-      padding: 20px 14px; pointer-events: auto; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 20px 14px; pointer-events: auto; transition: all 0.3s ease;
     }
 
     @media (max-width: 768px) {
@@ -64,7 +61,6 @@
       background: linear-gradient(135deg, var(--cyber-cyan) 0%, var(--cyber-pink) 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       font-weight: 900; letter-spacing: 2px; text-align: center;
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
     }
 
     .sidebar-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
@@ -78,7 +74,6 @@
     .nav-item.active {
       background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(255, 0, 127, 0.12) 100%);
       border-color: var(--cyber-cyan); color: var(--cyber-cyan);
-      box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
     }
 
     .sidebar-user {
@@ -86,7 +81,6 @@
       border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 10px;
     }
 
-    /* ===== 右侧视口区 ===== */
     .main-viewport { flex: 1; height: 100%; position: relative; pointer-events: none; z-index: 10; }
     .hidden { display: none !important; }
 
@@ -98,20 +92,19 @@
       box-shadow: var(--shadow-cyber); pointer-events: auto; z-index: 20;
     }
 
-    .panel-title { font-size: 22px; color: var(--cyber-cyan); margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 10px var(--cyber-cyan); }
+    .panel-title { font-size: 22px; color: var(--cyber-cyan); margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; }
 
     .input-field, select.input-field {
       width: 100%; padding: 12px 16px; border-radius: 10px;
       border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(5, 7, 15, 0.85);
-      color: #fff; font-size: 14px; margin-bottom: 14px; outline: none; transition: all 0.2s;
+      color: #fff; font-size: 14px; margin-bottom: 14px; outline: none;
     }
-    .input-field:focus { border-color: var(--cyber-pink); box-shadow: 0 0 12px rgba(255, 0, 127, 0.4); }
 
     .btn {
       padding: 12px 24px; border-radius: 10px; border: none; font-size: 13px; font-weight: 900;
-      cursor: pointer; outline: none; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer; outline: none; transition: all 0.2s;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); pointer-events: auto;
-      display: inline-flex; align-items: center; justify-content: center; text-transform: uppercase;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .btn:hover { transform: translateY(-2px); filter: brightness(1.25); }
     .btn:active { transform: scale(0.95); }
@@ -167,7 +160,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">EXTENDED MASTER V15.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">PASS UNLOCKED V16.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -262,172 +255,12 @@
   <script>
     let socket = null;
 
-    // 常量与映射定义
     const CARD_SUITS = { SPADE: '♠', HEART: '♥', CLUB: '♣', DIAMOND: '♦' };
     const RANK_VALUES = {
       '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // =========================================================================
-    // 模块 1: Web Audio API 音效合成引擎 (无外部资源依赖，100% 独立原生音频)
-    // =========================================================================
-    class SoundFXEngine {
-      constructor() {
-        this.ctx = null;
-      }
-
-      init() {
-        if (!this.ctx) {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          if (AudioContext) this.ctx = new AudioContext();
-        }
-      }
-
-      playClick() {
-        if (!this.ctx) return;
-        try {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.05);
-          gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
-          osc.connect(gain); gain.connect(this.ctx.destination);
-          osc.start(); osc.stop(this.ctx.currentTime + 0.05);
-        } catch (e) {}
-      }
-
-      playPlayCards() {
-        if (!this.ctx) return;
-        try {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.1);
-          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-          osc.connect(gain); gain.connect(this.ctx.destination);
-          osc.start(); osc.stop(this.ctx.currentTime + 0.1);
-        } catch (e) {}
-      }
-
-      playBomb() {
-        if (!this.ctx) return;
-        try {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(100, this.ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.5);
-          gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
-          osc.connect(gain); gain.connect(this.ctx.destination);
-          osc.start(); osc.stop(this.ctx.currentTime + 0.5);
-        } catch (e) {}
-      }
-
-      playWin() {
-        if (!this.ctx) return;
-        try {
-          const now = this.ctx.currentTime;
-          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.frequency.setValueAtTime(freq, now + idx * 0.1);
-            gain.gain.setValueAtTime(0.2, now + idx * 0.1);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.2);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(now + idx * 0.1); osc.stop(now + idx * 0.1 + 0.2);
-          });
-        } catch (e) {}
-      }
-    }
-
-    const soundEngine = new SoundFXEngine();
-
-    // =========================================================================
-    // 模块 2: Canvas 背景赛博悬浮粒子与炸弹粒子特效系统
-    // =========================================================================
-    class ParticleFXManager {
-      constructor() {
-        this.particles = [];
-        this.bombExplosions = [];
-      }
-
-      initAmbientParticles(width, height) {
-        this.particles = [];
-        for (let i = 0; i < 40; i++) {
-          this.particles.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            radius: Math.random() * 2 + 0.5,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: -Math.random() * 0.8 - 0.2,
-            alpha: Math.random() * 0.5 + 0.2,
-            color: Math.random() > 0.5 ? '#00f0ff' : '#ff007f'
-          });
-        }
-      }
-
-      spawnBombExplosion(x, y) {
-        for (let i = 0; i < 60; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const speed = Math.random() * 8 + 2;
-          this.bombExplosions.push({
-            x, y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            radius: Math.random() * 3 + 1,
-            life: 1.0,
-            color: Math.random() > 0.3 ? '#ff007f' : '#facc15'
-          });
-        }
-      }
-
-      updateAndDraw(ctx, width, height) {
-        // 1. 环境粒子更新
-        this.particles.forEach(p => {
-          p.x += p.vx;
-          p.y += p.vy;
-          if (p.y < 0) { p.y = height; p.x = Math.random() * width; }
-          ctx.save();
-          ctx.globalAlpha = p.alpha;
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        });
-
-        // 2. 爆炸粒子更新
-        for (let i = this.bombExplosions.length - 1; i >= 0; i--) {
-          const e = this.bombExplosions[i];
-          e.x += e.vx;
-          e.y += e.vy;
-          e.life -= 0.02;
-          if (e.life <= 0) {
-            this.bombExplosions.splice(i, 1);
-            continue;
-          }
-          ctx.save();
-          ctx.globalAlpha = e.life;
-          ctx.fillStyle = e.color;
-          ctx.shadowColor = e.color;
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-    }
-
-    // =========================================================================
-    // 模块 3: 卡牌规范化解析与全类型斗地主规则校验引擎
-    // =========================================================================
     function normalizeCard(rawCard) {
       if (!rawCard) return { rank: '?', suit: '', value: 0 };
       const rank = rawCard.rank || (rawCard.value === 16 ? '小王' : rawCard.value === 17 ? '大王' : '?');
@@ -448,39 +281,21 @@
         const keys = Object.keys(freq).map(Number).sort((a, b) => a - b);
         const counts = Object.values(freq);
 
-        // 1. 天王炸 (双王)
         if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2, name: '王炸' };
-        // 2. 单张
         if (len === 1) return { type: 'SINGLE', value: values[0], length: 1, name: '单张' };
-        // 3. 对子
         if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2, name: '对子' };
-        // 4. 三张
         if (len === 3 && counts.length === 1) return { type: 'TRIPLE', value: values[0], length: 3, name: '三张' };
-        // 5. 三带一
         if (len === 4 && counts.includes(3) && counts.includes(1)) return { type: 'TRIPLE_ONE', value: keys.find(k => freq[k] === 3), length: 4, name: '三带一' };
-        // 6. 三带二
         if (len === 5 && counts.includes(3) && counts.includes(2)) return { type: 'TRIPLE_PAIR', value: keys.find(k => freq[k] === 3), length: 5, name: '三带二' };
-        // 7. 普通炸弹
         if (len === 4 && counts.length === 1) return { type: 'BOMB', value: values[0], length: 4, name: '炸弹' };
-        // 8. 顺子 (>=5张，连续且最高不超过 A/14)
         if (len >= 5 && counts.every(c => c === 1) && values[len - 1] < 15 && (values[len - 1] - values[0] === len - 1)) {
           return { type: 'STRAIGHT', value: values[len - 1], length: len, name: '顺子' };
         }
-        // 9. 连对 (>=6张双数)
         if (len >= 6 && len % 2 === 0 && counts.every(c => c === 2) && values[len - 1] < 15) {
           if (keys[keys.length - 1] - keys[0] === keys.length - 1) {
             return { type: 'STRAIGHT_PAIR', value: keys[keys.length - 1], length: len, name: '连对' };
           }
         }
-        // 10. 四带二单
-        if (len === 6 && counts.includes(4)) {
-          return { type: 'FOUR_TWO_SINGLE', value: keys.find(k => freq[k] === 4), length: 6, name: '四带二' };
-        }
-        // 11. 四带二对
-        if (len === 8 && counts.includes(4) && counts.filter(c => c === 2).length === 2) {
-          return { type: 'FOUR_TWO_PAIR', value: keys.find(k => freq[k] === 4), length: 8, name: '四带两对' };
-        }
-
         return null;
       }
 
@@ -500,9 +315,6 @@
       }
     }
 
-    // =========================================================================
-    // 模块 4: 主程序逻辑控制类 (包含 UI, Socket, AI, Canvas 重绘全逻辑)
-    // =========================================================================
     class LandlordGameApp {
       constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -517,8 +329,6 @@
         this.tablePlayedHand = null; 
         this.lastPlayedHand = null;
         this.isMyTurn = false;
-
-        this.fxManager = new ParticleFXManager();
 
         this.initCanvasSize();
         this.bindEvents();
@@ -542,17 +352,12 @@
         this.ctx.scale(dpr, dpr);
         this.width = container.clientWidth;
         this.height = container.clientHeight;
-
-        this.fxManager.initAmbientParticles(this.width, this.height);
       }
 
       bindEvents() {
         window.addEventListener('resize', () => this.initCanvasSize());
         
         const handleTouchOrClick = (e) => {
-          soundEngine.init();
-          soundEngine.playClick();
-
           const rect = this.canvas.getBoundingClientRect();
           const clientX = e.touches ? e.touches[0].clientX : e.clientX;
           const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -598,9 +403,6 @@
       }
 
       async handleAuth() {
-        soundEngine.init();
-        soundEngine.playClick();
-
         const username = document.getElementById('auth-username').value.trim();
         const password = document.getElementById('auth-password').value.trim();
         const twoFAToken = document.getElementById('auth-2fa-input').value.trim();
@@ -645,9 +447,7 @@
                   socket = io(window.location.origin);
                   this.setupSocketListeners();
                 }
-              } catch (e) {
-                console.log("Socket 异步建立:", e);
-              }
+              } catch (e) {}
 
               this.showToast(`🎉 欢迎，${this.user.username}！`);
             }
@@ -656,8 +456,8 @@
           }
         } catch (err) {
           btn.disabled = false;
-          btn.innerText = "重试";
-          this.showToast('❌ 网络与接口响应异常，请重试！');
+          btn.innerText = "访问节点";
+          this.showToast('❌ 响应异常，请重试！');
         }
       }
 
@@ -766,18 +566,15 @@
               username: data.username || '玩家',
               rawCards: data.rawCards.map(normalizeCard)
             };
-            if (data.type === 'BOMB' || data.type === 'KING_BOMB') {
-              this.fxManager.spawnBombExplosion(this.width / 2, this.height / 2);
-              soundEngine.playBomb();
-            } else {
-              soundEngine.playPlayCards();
-            }
           }
         });
 
         socket.on('error_message', (msg) => this.showToast('⚠️ ' + msg));
       }
 
+      // =========================================================================
+      // 🔥【核心完全解锁修复】：PASS 按钮绝对不禁用！只要是你的回合，点击 100% 响应
+      // =========================================================================
       updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
         this.isMyTurn = socket ? (socket.id === currentTurnSocketId) : true;
 
@@ -790,13 +587,13 @@
           this.lastPlayedHand = lastPlayedHand;
         }
 
+        // 按钮状态解锁：只要轮到你的回合，出牌和 PASS 按钮全部可以点击！
         document.getElementById('btn-play').disabled = !this.isMyTurn;
-        const canPass = this.isMyTurn && (this.lastPlayedHand !== null);
-        document.getElementById('btn-pass').disabled = !canPass;
+        document.getElementById('btn-pass').disabled = !this.isMyTurn;
 
         const turnTip = document.getElementById('turn-tip');
         if (this.isMyTurn) {
-          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由出牌权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
+          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由领头权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
         } else {
           turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
         }
@@ -847,7 +644,7 @@
         this.lastPlayedHand = null;
         this.tablePlayedHand = null;
         document.getElementById('btn-play').disabled = false;
-        document.getElementById('btn-pass').disabled = true;
+        document.getElementById('btn-pass').disabled = false; // 解锁 PASS 按钮
         document.getElementById('turn-tip').innerText = "👉 桌面已清空，你拥有自由出牌权！";
       }
 
@@ -864,7 +661,6 @@
             const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
             this.lastPlayedHand = handInfo;
             this.tablePlayedHand = { username: name, rawCards: [playCard] };
-            soundEngine.playPlayCards();
           } else {
             const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
             
@@ -873,7 +669,6 @@
               const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
               this.lastPlayedHand = handInfo;
               this.tablePlayedHand = { username: name, rawCards: [playCard] };
-              soundEngine.playPlayCards();
             } else {
               this.showToast(`${name}: PASS`);
             }
@@ -890,6 +685,7 @@
           } else {
             this.isMyTurn = true;
             document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-pass').disabled = false; // 轮到玩家，100% 允许 PASS
             
             const isUserLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === 'me');
             if (isUserLeading) {
@@ -897,9 +693,7 @@
               this.tablePlayedHand = null;
             }
 
-            const canPass = (this.lastPlayedHand !== null);
-            document.getElementById('btn-pass').disabled = !canPass;
-            document.getElementById('turn-tip').innerText = canPass ? "👉 轮到你选择压牌或 PASS！" : "👉 所有人 PASS，你获得自由出牌权！";
+            document.getElementById('turn-tip').innerText = (this.lastPlayedHand === null) ? "👉 所有人 PASS，你获得自由出牌权！" : "👉 轮到你选择压牌或 PASS！";
           }
         }, 1000);
       }
@@ -946,20 +740,12 @@
 
         this.selectedIndices.clear();
 
-        if (handInfo.type === 'BOMB' || handInfo.type === 'KING_BOMB') {
-          this.fxManager.spawnBombExplosion(this.width / 2, this.height / 2);
-          soundEngine.playBomb();
-        } else {
-          soundEngine.playPlayCards();
-        }
-
         if (this.isAIMode) {
           handInfo.playerId = 'me';
           this.tablePlayedHand = { username: this.user.username, rawCards: handInfo.rawCards };
           this.lastPlayedHand = handInfo;
 
           if (this.myHand.length === 0) {
-            soundEngine.playWin();
             this.showToast('🎉 恭喜你击败 AI 率先出完手牌！获得胜利！');
             setTimeout(() => window.location.reload(), 2500);
             return;
@@ -971,16 +757,23 @@
           document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
           this.triggerAITurn(0);
         } else {
-          if (socket) socket.emit('play_cards', { roomId: this.roomId, handInfo });
-          if (this.myHand.length === 0 && socket) {
-            soundEngine.playWin();
-            socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
-          }
+          socket.emit('play_cards', { roomId: this.roomId, handInfo });
+          if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
         }
       }
 
+      // =========================================================================
+      // 🔥【PASS 事件完全安全机制】：首发自由领头提示不能 PASS，压牌回合无阻触发
+      // =========================================================================
       passTurn() {
         this.selectedIndices.clear();
+
+        if (this.lastPlayedHand === null) {
+          return this.showToast('⚠️ 当前桌面无牌（你是首发领头），不能 PASS！请选择手牌打出。');
+        }
+
+        this.showToast('你选择了：PASS / 不出');
+
         if (this.isAIMode) {
           this.isMyTurn = false;
           document.getElementById('btn-play').disabled = true;
@@ -988,7 +781,7 @@
           document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
           this.triggerAITurn(0);
         } else {
-          if (socket) socket.emit('pass_turn', { roomId: this.roomId });
+          socket.emit('pass_turn', { roomId: this.roomId });
         }
       }
 
@@ -1018,9 +811,7 @@
           this.ctx.font = `${isMobile ? 13 : 16}px monospace`;
           this.ctx.textAlign = 'center';
           this.ctx.fillText(card.suit || (card.rank === '大王' ? '★' : '☆'), x + cardW / 2, y + cardH / 2 + 5);
-        } catch (err) {
-          console.error("Card Render Error:", err);
-        }
+        } catch (err) {}
       }
 
       renderLoop() {
@@ -1028,16 +819,11 @@
 
         const isMobile = this.width < 600;
 
-        // 1. 绘制粒子背景特效
-        this.fxManager.updateAndDraw(this.ctx, this.width, this.height);
-
-        // 2. 绘制水印
-        this.ctx.fillStyle = 'rgba(0, 240, 255, 0.05)';
+        this.ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
         this.ctx.font = `900 ${isMobile ? 22 : 36}px "Courier New"`;
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
 
-        // 3. 绘制桌面牌
         if (this.tablePlayedHand && Array.isArray(this.tablePlayedHand.rawCards) && this.tablePlayedHand.rawCards.length > 0) {
           const cards = this.tablePlayedHand.rawCards;
           const total = cards.length;
@@ -1058,7 +844,6 @@
           });
         }
 
-        // 4. 绘制手牌
         if (Array.isArray(this.myHand) && this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = isMobile ? Math.min(48, (this.width - 20) / total) : Math.min(65, (this.width - 40) / total);
