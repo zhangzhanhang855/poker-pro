@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 内存数据库兜底 (防 MongoDB 连接超时卡死登录)
+// 内存数据库兜底 (防 MongoDB 连接超时卡死)
 const memoryUsers = {};
 const memoryItems = [
   { itemId: 'skin_cyber', name: '赛博霓虹牌背', type: 'SKIN', price: 500, description: '高质感赛博朋克发光牌背', icon: '🌌' },
@@ -30,13 +30,8 @@ let isMongoConnected = false;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/landlord_db";
 
 mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 2000 })
-  .then(() => {
-    isMongoConnected = true;
-    console.log('✅ [MongoDB Atlas] 数据库连接成功！');
-  })
-  .catch(() => {
-    console.log('⚠️ [MongoDB Atlas] 未连接或超时，自动切换至【内存高速数据库模式】，保证 100% 畅快登录！');
-  });
+  .then(() => { isMongoConnected = true; console.log('✅ [MongoDB Atlas] 连接成功！'); })
+  .catch(() => { console.log('⚠️ 自动切换至内存高速数据库模式，保证畅快登录！'); });
 
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -51,11 +46,10 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// 注册
+// 注册 API
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '账号和密码不能为空' });
-
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     if (isMongoConnected) {
@@ -71,22 +65,14 @@ app.post('/api/auth/register', async (req, res) => {
       };
     }
     res.json({ success: true, message: '注册成功，请直接登录！' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 登录
+// 登录 API
 app.post('/api/auth/login', async (req, res) => {
   const { username, password, twoFAToken } = req.body;
   try {
-    let user;
-    if (isMongoConnected) {
-      user = await User.findOne({ username });
-    } else {
-      user = memoryUsers[username];
-    }
-
+    let user = isMongoConnected ? await User.findOne({ username }) : memoryUsers[username];
     if (!user) return res.status(400).json({ error: '账号不存在，请先注册！' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -94,36 +80,28 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (user.is2FAEnabled) {
       if (!twoFAToken) return res.json({ success: false, require2FA: true, message: '请输入 2FA 动态验证码' });
-      const isValid = authenticator.check(twoFAToken, user.twoFASecret);
-      if (!isValid) return res.status(400).json({ error: '2FA 验证码错误！' });
+      if (!authenticator.check(twoFAToken, user.twoFASecret)) return res.status(400).json({ error: '2FA 验证码错误！' });
     }
 
-    const userInfo = {
-      username: user.username, coins: user.coins, avatar: user.avatar,
-      equippedCardSkin: user.equippedCardSkin, inventory: user.inventory, is2FAEnabled: user.is2FAEnabled
-    };
-    res.json({ success: true, user: userInfo });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    res.json({
+      success: true,
+      user: { username: user.username, coins: user.coins, avatar: user.avatar, equippedCardSkin: user.equippedCardSkin, inventory: user.inventory, is2FAEnabled: user.is2FAEnabled }
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 2FA 生成
 app.post('/api/user/generate-2fa', async (req, res) => {
   const { username } = req.body;
   try {
     const secret = authenticator.generateSecret();
     const otpauth = authenticator.keyuri(username, 'JR_Cyber_Landlord', secret);
     const qrCodeUrl = await QRCode.toDataURL(otpauth);
-    
     if (isMongoConnected) await User.findOneAndUpdate({ username }, { twoFASecret: secret });
     else if (memoryUsers[username]) memoryUsers[username].twoFASecret = secret;
-
     res.json({ success: true, secret, qrCodeUrl });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 2FA 校验
 app.post('/api/user/verify-2fa', async (req, res) => {
   const { username, token } = req.body;
   try {
@@ -131,7 +109,6 @@ app.post('/api/user/verify-2fa', async (req, res) => {
     if (user && authenticator.check(token, user.twoFASecret)) {
       user.is2FAEnabled = true;
       if (isMongoConnected) await user.save();
-      
       res.json({ success: true, user: { username: user.username, coins: user.coins, avatar: user.avatar, inventory: user.inventory, is2FAEnabled: true }, message: '2FA 绑定成功！' });
     } else {
       res.status(400).json({ error: '2FA 验证码错误！' });
@@ -141,13 +118,12 @@ app.post('/api/user/verify-2fa', async (req, res) => {
 
 app.get('/api/shop/items', (req, res) => res.json({ success: true, items: memoryItems }));
 
-// Socket.IO 逻辑
+// Socket.IO 核心逻辑重构
 const rooms = {};
 
 io.on('connection', (socket) => {
   socket.on('create_room', ({ roomId, username, mode = 2 }) => {
     if (rooms[roomId]) return socket.emit('error_message', '房间号已使用，请更换！');
-    
     const maxPlayers = parseInt(mode, 10);
     rooms[roomId] = {
       id: roomId, maxPlayers, players: [{ id: socket.id, username, coins: 1000, avatar: '🤖' }],
@@ -179,6 +155,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 严格安全的数据序列化清洗传输
   socket.on('play_cards', ({ roomId, handInfo }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -186,18 +163,32 @@ io.on('connection', (socket) => {
     const currentTurnPlayer = room.players[room.turnIndex];
     if (currentTurnPlayer.id !== socket.id) return socket.emit('error_message', '还没轮到你出牌！');
 
+    // 精确清洗卡牌数据，防丢属性
+    const cleanRawCards = Array.isArray(handInfo.rawCards) 
+      ? handInfo.rawCards.map(c => ({ rank: c.rank, suit: c.suit || '', value: Number(c.value) }))
+      : [];
+
     room.passCount = 0;
     room.lastPlayedHand = {
-      playerId: socket.id, username: currentTurnPlayer.username,
-      type: handInfo.type, value: handInfo.value, length: handInfo.length, rawCards: handInfo.rawCards
+      playerId: socket.id,
+      username: currentTurnPlayer.username,
+      type: handInfo.type,
+      value: Number(handInfo.value),
+      length: Number(handInfo.length),
+      rawCards: cleanRawCards
     };
 
+    // 全局广播打牌数据
     io.to(roomId).emit('cards_played', room.lastPlayedHand);
 
     room.turnIndex = (room.turnIndex + 1) % room.maxPlayers;
     const nextPlayer = room.players[room.turnIndex];
 
-    io.to(roomId).emit('turn_changed', { currentTurnSocketId: nextPlayer.id, username: nextPlayer.username, lastPlayedHand: room.lastPlayedHand });
+    io.to(roomId).emit('turn_changed', {
+      currentTurnSocketId: nextPlayer.id,
+      username: nextPlayer.username,
+      lastPlayedHand: room.lastPlayedHand
+    });
   });
 
   socket.on('pass_turn', ({ roomId }) => {
@@ -209,20 +200,31 @@ io.on('connection', (socket) => {
 
     room.passCount++;
     let isTableCleared = false;
+    
+    // 全员 Pass 清空桌面
     if (room.passCount >= room.maxPlayers - 1) {
       room.lastPlayedHand = null;
       room.passCount = 0;
       isTableCleared = true;
     }
 
-    io.to(roomId).emit('cards_played', { playerId: socket.id, username: currentTurnPlayer.username, cardsText: 'PASS', isClear: isTableCleared });
+    io.to(roomId).emit('cards_played', {
+      playerId: socket.id,
+      username: currentTurnPlayer.username,
+      cardsText: 'PASS',
+      isClear: isTableCleared
+    });
 
     room.turnIndex = (room.turnIndex + 1) % room.maxPlayers;
     const nextPlayer = room.players[room.turnIndex];
 
-    io.to(roomId).emit('turn_changed', { currentTurnSocketId: nextPlayer.id, username: nextPlayer.username, lastPlayedHand: room.lastPlayedHand });
+    io.to(roomId).emit('turn_changed', {
+      currentTurnSocketId: nextPlayer.id,
+      username: nextPlayer.username,
+      lastPlayedHand: room.lastPlayedHand
+    });
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 服务运行于端口: ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 后端服务运行于端口: ${PORT}`));
