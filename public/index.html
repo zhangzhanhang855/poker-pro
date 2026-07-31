@@ -2,9 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <!-- 完美适配手机端、iPhone、iPad 以及平板各种高分屏 Retina 缩放 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 全移动端/iPad 响应式自适应版</title>
+  <title>CYBER LANDLORD - 终极零吞牌防爆版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -27,13 +26,12 @@
     html, body {
       width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-dark);
       display: flex; justify-content: center; align-items: center;
-      /* 针对 iOS 适配刘海屏与安全区域 */
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
     #game-container {
       position: relative; width: 100vw; height: 100vh;
-      max-width: 1366px; max-height: 1024px; /* 完美适配 iPad Pro 尺寸 */
+      max-width: 1366px; max-height: 1024px;
       background: radial-gradient(circle at 50% 30%, #0d1527 0%, #03050a 100%);
       border: 1px solid rgba(0, 240, 255, 0.2);
       box-shadow: 0 0 80px rgba(0, 240, 255, 0.15); overflow: hidden;
@@ -44,7 +42,6 @@
       position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none;
     }
 
-    /* 响应式侧边栏 Sidebar (适配手机与 iPad) */
     .sidebar {
       width: 220px; height: 100%;
       background: rgba(8, 12, 23, 0.95); backdrop-filter: blur(16px);
@@ -53,7 +50,6 @@
       padding: 16px 12px; pointer-events: auto; transition: all 0.3s ease;
     }
 
-    /* iPad & 手机端响应式调节 */
     @media (max-width: 768px) {
       .sidebar { width: 170px; padding: 12px 8px; }
       .sidebar-brand h2 { font-size: 1rem !important; }
@@ -119,7 +115,6 @@
     .btn-gold { background: linear-gradient(135deg, var(--cyber-yellow) 0%, #d97706 100%); color: #000; }
     .btn-dark { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.15); }
 
-    /* 移动端与 iPad 按钮区适配 */
     .action-bar {
       position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
       display: flex; gap: 10px; z-index: 20; pointer-events: auto; width: 90%; max-width: 400px; justify-content: center;
@@ -165,7 +160,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 2px; letter-spacing: 1px;">RESPONSIVE V12.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 2px; letter-spacing: 1px;">STABLE V13.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -265,10 +260,19 @@
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
+    // 辅助函数：卡牌对象规范化（保证数据结构防爆）
+    function normalizeCard(rawCard) {
+      if (!rawCard) return { rank: '?', suit: '', value: 0 };
+      const rank = rawCard.rank || (rawCard.value === 16 ? '小王' : rawCard.value === 17 ? '大王' : '?');
+      const suit = rawCard.suit || '';
+      const value = rawCard.value || RANK_VALUES[rank] || 0;
+      return { rank, suit, value };
+    }
+
     class CardRulesEngine {
       static parseCards(cards) {
         if (!cards || cards.length === 0) return null;
-        const sorted = [...cards].sort((a, b) => a.value - b.value);
+        const sorted = [...cards].map(normalizeCard).sort((a, b) => a.value - b.value);
         const len = sorted.length;
         const values = sorted.map(c => c.value);
         
@@ -296,7 +300,7 @@
       }
 
       static canBeat(myHand, lastHand) {
-        if (!lastHand) return true; // 自由出牌，无需比大小
+        if (!lastHand) return true;
 
         if (myHand.type === 'KING_BOMB') return true;
         if (lastHand.type === 'KING_BOMB') return false;
@@ -340,7 +344,6 @@
         setTimeout(() => toast.remove(), 3000);
       }
 
-      // 视口动态感知计算 (适配手机与 iPad 高分屏)
       initCanvasSize() {
         const container = document.getElementById('game-container');
         const dpr = window.devicePixelRatio || 1;
@@ -354,7 +357,6 @@
       bindEvents() {
         window.addEventListener('resize', () => this.initCanvasSize());
         
-        // 手机与 iPad 触摸优化
         const handleTouchOrClick = (e) => {
           const rect = this.canvas.getBoundingClientRect();
           const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -363,7 +365,6 @@
           const clickX = clientX - rect.left;
           const clickY = clientY - rect.top;
 
-          // 根据设备屏幕尺寸计算卡牌大小与重叠间距
           const isMobile = this.width < 600;
           const cardW = isMobile ? Math.min(48, (this.width - 20) / (this.myHand.length || 1)) : Math.min(65, (this.width - 40) / (this.myHand.length || 1));
           const cardH = isMobile ? 72 : 92;
@@ -537,14 +538,15 @@
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
+        // 【核心修复防爆点】：网络广播数据强制规范化重构，绝不丢牌！
         socket.on('cards_played', (data) => {
           if (data.isClear) {
             this.tablePlayedHand = null;
             this.lastPlayedHand = null;
-          } else if (data.rawCards && data.rawCards.length > 0) {
+          } else if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
             this.tablePlayedHand = {
-              username: data.username,
-              rawCards: data.rawCards.map(c => ({ rank: c.rank, suit: c.suit, value: c.value }))
+              username: data.username || '玩家',
+              rawCards: data.rawCards.map(normalizeCard)
             };
           }
         });
@@ -613,9 +615,9 @@
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
-        this.myHand = deck.slice(0, 17).sort((a, b) => b.value - a.value);
-        this.aiHands[0] = deck.slice(17, 34).sort((a, b) => b.value - a.value);
-        this.aiHands[1] = deck.slice(34, 51).sort((a, b) => b.value - a.value);
+        this.myHand = deck.slice(0, 17).map(normalizeCard).sort((a, b) => b.value - a.value);
+        this.aiHands[0] = deck.slice(17, 34).map(normalizeCard).sort((a, b) => b.value - a.value);
+        this.aiHands[1] = deck.slice(34, 51).map(normalizeCard).sort((a, b) => b.value - a.value);
 
         this.isMyTurn = true;
         this.lastPlayedHand = null;
@@ -625,30 +627,27 @@
         document.getElementById('turn-tip').innerText = "👉 桌面已清空，你拥有自由出牌权！";
       }
 
-      // 【核心 BUG 修复点】：彻底重构 AI 出牌逻辑（AI 有牌能压时绝不误 Pass，AI 领头出最大牌时维护领头权）
       triggerAITurn(aiIndex) {
         setTimeout(() => {
           const hand = this.aiHands[aiIndex];
           const name = `AI 玩家 ${aiIndex + 1}`;
 
           if (!this.lastPlayedHand) {
-            // AI 自由出牌领头：出手中权值最小的一张单牌
-            const playCard = hand.pop();
+            // AI 自由领头出最小单牌
+            const playCard = normalizeCard(hand.pop());
             const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: 'ai_' + aiIndex };
             this.lastPlayedHand = handInfo;
             this.tablePlayedHand = { username: name, rawCards: [playCard] };
           } else {
-            // AI 尝试压牌：检查手牌中是否有严格大于上一手牌的单牌
+            // AI 尝试按数值压牌
             const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
             
-            if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE' || this.lastPlayedHand.type === 'KING_BOMB')) {
-              // 能压过！取出该牌打出，绝不误 PASS！
-              const playCard = hand.splice(validCardIndex, 1)[0];
+            if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
+              const playCard = normalizeCard(hand.splice(validCardIndex, 1)[0]);
               const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: 'ai_' + aiIndex };
               this.lastPlayedHand = handInfo;
               this.tablePlayedHand = { username: name, rawCards: [playCard] };
             } else {
-              // 确实要不起：PASS！
               this.showToast(`${name}: PASS`);
             }
           }
@@ -659,15 +658,12 @@
             return;
           }
 
-          // 推进到下一个 AI 或者轮回玩家
           if (aiIndex === 0) {
             this.triggerAITurn(1);
           } else {
-            // 轮回玩家回合
             this.isMyTurn = true;
             document.getElementById('btn-play').disabled = false;
             
-            // 严密判断：如果 AI 没出牌（或者压牌压制了全场绕回玩家），正确判断压牌/领头权
             const isMeLeading = !this.lastPlayedHand || this.lastPlayedHand.playerId === 'me';
             if (isMeLeading) {
               this.lastPlayedHand = null;
@@ -698,7 +694,7 @@
         }
 
         const handCount = (maxPlayers === 5) ? 20 : 17;
-        this.myHand = deck.slice(0, handCount).sort((a,b) => b.value - a.value);
+        this.myHand = deck.slice(0, handCount).map(normalizeCard).sort((a,b) => b.value - a.value);
       }
 
       sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
@@ -706,7 +702,7 @@
       playCards() {
         if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
         
-        const selectedCards = Array.from(this.selectedIndices).map(i => this.myHand[i]);
+        const selectedCards = Array.from(this.selectedIndices).map(i => normalizeCard(this.myHand[i]));
         const handInfo = CardRulesEngine.parseCards(selectedCards);
         
         if (!handInfo) return this.showToast('非法的出牌组合！');
@@ -715,9 +711,9 @@
           return this.showToast(`出的牌无法压过上家！必须出同牌型更大值的牌。`);
         }
 
-        handInfo.rawCards = selectedCards.map(c => ({ rank: c.rank, suit: c.suit, value: c.value }));
+        handInfo.rawCards = selectedCards;
 
-        // 使用唯一标识过滤扣牌
+        // 【扣牌严密判定】：确保绝对不吞牌
         this.myHand = this.myHand.filter(card => {
           return !selectedCards.some(s => s.rank === card.rank && s.suit === card.suit);
         });
@@ -759,32 +755,36 @@
         }
       }
 
-      drawCardGraphic(card, x, y, cardW, cardH, isSelected = false) {
-        if (!card) return;
-        this.ctx.fillStyle = '#0a0f1d';
-        this.ctx.beginPath();
-        this.ctx.roundRect(x, y, cardW, cardH, 6);
-        this.ctx.fill();
+      // 扑克牌 Canvas 图形安全渲染引擎（强拦截 try-catch 隔离错误）
+      drawCardGraphic(rawCard, x, y, cardW, cardH, isSelected = false) {
+        try {
+          const card = normalizeCard(rawCard);
+          this.ctx.fillStyle = '#0a0f1d';
+          this.ctx.beginPath();
+          this.ctx.roundRect(x, y, cardW, cardH, 6);
+          this.ctx.fill();
 
-        this.ctx.lineWidth = isSelected ? 2.5 : 1;
-        this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
-        this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
-        this.ctx.shadowBlur = isSelected ? 12 : 0;
-        this.ctx.stroke();
-        this.ctx.shadowColor = 'transparent';
+          this.ctx.lineWidth = isSelected ? 2.5 : 1;
+          this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
+          this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
+          this.ctx.shadowBlur = isSelected ? 12 : 0;
+          this.ctx.stroke();
+          this.ctx.shadowColor = 'transparent';
 
-        const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
-        this.ctx.fillStyle = isRed ? '#ff007f' : '#00f0ff';
-        
-        // 动态自适应字号
-        const isMobile = this.width < 600;
-        this.ctx.font = `bold ${isMobile ? 11 : 13}px "Courier New"`;
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText(card.rank || '', x + 4, y + (isMobile ? 12 : 15));
+          const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
+          this.ctx.fillStyle = isRed ? '#ff007f' : '#00f0ff';
+          
+          const isMobile = this.width < 600;
+          this.ctx.font = `bold ${isMobile ? 11 : 13}px "Courier New"`;
+          this.ctx.textAlign = 'left';
+          this.ctx.fillText(card.rank || '', x + 4, y + (isMobile ? 12 : 15));
 
-        this.ctx.font = `${isMobile ? 13 : 16}px monospace`;
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(card.suit || (card.rank === '大王' ? '★' : '☆'), x + cardW / 2, y + cardH / 2 + 5);
+          this.ctx.font = `${isMobile ? 13 : 16}px monospace`;
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(card.suit || (card.rank === '大王' ? '★' : '☆'), x + cardW / 2, y + cardH / 2 + 5);
+        } catch (err) {
+          console.error("Card Render Error (Isolated):", err);
+        }
       }
 
       renderLoop() {
@@ -792,13 +792,13 @@
 
         const isMobile = this.width < 600;
 
-        // 居中动态水印
+        // 水印
         this.ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
         this.ctx.font = `900 ${isMobile ? 22 : 36}px "Courier New"`;
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
 
-        // 防御性渲染：桌面牌
+        // 桌面打出的牌渲染
         if (this.tablePlayedHand && Array.isArray(this.tablePlayedHand.rawCards) && this.tablePlayedHand.rawCards.length > 0) {
           const cards = this.tablePlayedHand.rawCards;
           const total = cards.length;
@@ -819,7 +819,7 @@
           });
         }
 
-        // 防御性渲染：手牌区
+        // 手牌渲染
         if (Array.isArray(this.myHand) && this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = isMobile ? Math.min(48, (this.width - 20) / total) : Math.min(65, (this.width - 40) / total);
