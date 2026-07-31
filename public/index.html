@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 高智商 AI 决策版</title>
+  <title>CYBER LANDLORD - 唯一ID精确扣牌零吞牌版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -160,7 +160,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">SMART AI ENGINE V17.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">UNIQUE-ID ENGINE V18.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -261,12 +261,16 @@
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
+    // 全局唯一 ID 计数器，绝不重名
+    let globalCardIdCounter = 0;
+
     function normalizeCard(rawCard) {
-      if (!rawCard) return { rank: '?', suit: '', value: 0 };
+      if (!rawCard) return { id: 'card_null', rank: '?', suit: '', value: 0 };
       const rank = rawCard.rank || (rawCard.value === 16 ? '小王' : rawCard.value === 17 ? '大王' : '?');
       const suit = rawCard.suit || '';
       const value = rawCard.value || RANK_VALUES[rank] || 0;
-      return { rank, suit, value };
+      const id = rawCard.id || `card_${rank}_${suit}_${++globalCardIdCounter}`;
+      return { id, rank, suit, value };
     }
 
     class CardRulesEngine {
@@ -624,17 +628,18 @@
         const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
         const deck = [];
-        ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
-        deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
+        
+        ranks.forEach(r => suits.forEach(s => deck.push(normalizeCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
+        deck.push(normalizeCard({ rank: '小王', suit: '', value: 16 }), normalizeCard({ rank: '大王', suit: '', value: 17 }));
 
         for (let i = deck.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
-        this.myHand = deck.slice(0, 17).map(normalizeCard).sort((a, b) => b.value - a.value);
-        this.aiHands[0] = deck.slice(17, 34).map(normalizeCard).sort((a, b) => b.value - a.value);
-        this.aiHands[1] = deck.slice(34, 51).map(normalizeCard).sort((a, b) => b.value - a.value);
+        this.myHand = deck.slice(0, 17).sort((a, b) => b.value - a.value);
+        this.aiHands[0] = deck.slice(17, 34).sort((a, b) => b.value - a.value);
+        this.aiHands[1] = deck.slice(34, 51).sort((a, b) => b.value - a.value);
 
         this.isMyTurn = true;
         this.lastPlayedHand = null;
@@ -644,128 +649,41 @@
         document.getElementById('turn-tip').innerText = "👉 桌面已清空，你拥有自由出牌权！";
       }
 
-      // =========================================================================
-      // 🔥【AI 高智商决策引擎重构】：包含手牌拆解、试探控场与最小跟牌逻辑
-      // =========================================================================
+      // 【核心升级】：精确 ID 扣牌，AI 逻辑绝不产生多删/少删
       triggerAITurn(aiIndex) {
         setTimeout(() => {
-          const hand = this.aiHands[aiIndex]; // 当前 AI 手牌 (由大到小排序)
+          const hand = this.aiHands[aiIndex];
           const currentAiId = 'ai_' + aiIndex;
           const name = `AI 玩家 ${aiIndex + 1}`;
 
-          // 判断 AI 是否掌握自由领头权
           const isAiLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === currentAiId);
 
           if (isAiLeading) {
-            // --- 策略 A: 自由领头出牌 ---
-            // 1. 分析手牌组合：优先寻找对手里的三带、对子、顺子
-            const freq = {};
-            hand.forEach(c => freq[c.value] = (freq[c.value] || 0) + 1);
-
-            let playCards = [];
-            let playType = 'SINGLE';
-
-            // 优先打三带一/三带二（清杂牌）
-            const tripleVal = Object.keys(freq).find(v => freq[v] === 3);
-            if (tripleVal) {
-              const tripleCards = hand.filter(c => c.value === Number(tripleVal));
-              const singleCard = hand.find(c => c.value !== Number(tripleVal) && freq[c.value] === 1);
-              if (singleCard) {
-                playCards = [...tripleCards, singleCard];
-                playType = 'TRIPLE_ONE';
-              }
-            }
-
-            // 如果没有合适的三带，检查是否有最小的对子
-            if (playCards.length === 0) {
-              const pairVal = Object.keys(freq).find(v => freq[v] === 2 && Number(v) < 15);
-              if (pairVal) {
-                playCards = hand.filter(c => c.value === Number(pairVal));
-                playType = 'PAIR';
-              }
-            }
-
-            // 实在没有组合，试探性甩出手牌中【权值最小的一张单牌】(手牌数组末尾)
-            if (playCards.length === 0) {
-              const smallestSingle = hand[hand.length - 1];
-              playCards = [smallestSingle];
-              playType = 'SINGLE';
-            }
-
-            // 从 AI 手牌中扣除选出的牌
-            playCards.forEach(card => {
-              const idx = hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
-              if (idx !== -1) hand.splice(idx, 1);
-            });
-
-            const parsedHand = CardRulesEngine.parseCards(playCards);
-            const handInfo = { 
-              type: parsedHand ? parsedHand.type : playType, 
-              value: parsedHand ? parsedHand.value : playCards[0].value, 
-              length: playCards.length, 
-              rawCards: playCards.map(normalizeCard), 
-              playerId: currentAiId 
-            };
-
+            // 自由领头：拿最后一张（最小单牌）
+            const playCard = hand.pop();
+            const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
             this.lastPlayedHand = handInfo;
-            this.tablePlayedHand = { username: name, rawCards: handInfo.rawCards };
-
+            this.tablePlayedHand = { username: name, rawCards: [playCard] };
           } else {
-            // --- 策略 B: 跟牌压牌 ---
-            let playCards = [];
-
-            // 1. 如果上家出的是【单张】
-            if (this.lastPlayedHand.type === 'SINGLE') {
-              // 算牌关键：在手牌中从小到大寻找“能够管上的最小单牌” (从小到大搜)
-              for (let i = hand.length - 1; i >= 0; i--) {
-                if (hand[i].value > this.lastPlayedHand.value) {
-                  playCards = [hand[i]];
-                  hand.splice(i, 1); // 扣牌
-                  break;
-                }
-              }
-            }
-            // 2. 如果上家出的是【对子】
-            else if (this.lastPlayedHand.type === 'PAIR') {
-              const freq = {};
-              hand.forEach(c => freq[c.value] = (freq[c.value] || 0) + 1);
-              const targetVal = Object.keys(freq).find(v => freq[v] >= 2 && Number(v) > this.lastPlayedHand.value);
-              if (targetVal) {
-                const matched = hand.filter(c => c.value === Number(targetVal)).slice(0, 2);
-                playCards = matched;
-                matched.forEach(card => {
-                  const idx = hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
-                  if (idx !== -1) hand.splice(idx, 1);
-                });
-              }
-            }
-
-            // 3. 打出压制或者选择 PASS
-            if (playCards.length > 0) {
-              const parsedHand = CardRulesEngine.parseCards(playCards);
-              const handInfo = { 
-                type: parsedHand ? parsedHand.type : this.lastPlayedHand.type, 
-                value: parsedHand ? parsedHand.value : playCards[0].value, 
-                length: playCards.length, 
-                rawCards: playCards.map(normalizeCard), 
-                playerId: currentAiId 
-              };
+            // 压牌逻辑
+            const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
+            
+            if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
+              const playCard = hand.splice(validCardIndex, 1)[0];
+              const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
               this.lastPlayedHand = handInfo;
-              this.tablePlayedHand = { username: name, rawCards: handInfo.rawCards };
+              this.tablePlayedHand = { username: name, rawCards: [playCard] };
             } else {
-              // 精准判断：真的管不上，理性 PASS！
               this.showToast(`${name}: PASS`);
             }
           }
 
-          // 胜负检测
           if (hand.length === 0) {
             this.showToast(`💔 ${name} 率先出完手牌获胜！`);
             setTimeout(() => window.location.reload(), 2500);
             return;
           }
 
-          // 轮转推进
           if (aiIndex === 0) {
             this.triggerAITurn(1);
           } else {
@@ -779,7 +697,7 @@
               this.tablePlayedHand = null;
             }
 
-            document.getElementById('turn-tip').innerText = (this.lastPlayedHand === null) ? "👉 所有人 PASS，你获得自由领头出牌权！" : "👉 轮到你选择压牌或 PASS！";
+            document.getElementById('turn-tip').innerText = (this.lastPlayedHand === null) ? "👉 所有人 PASS，你获得自由出牌权！" : "👉 轮到你选择压牌或 PASS！";
           }
         }, 1000);
       }
@@ -791,8 +709,8 @@
         const deck = [];
 
         for (let d = 0; d < deckCount; d++) {
-          ranks.forEach(r => suits.forEach(s => deck.push({ rank: r, suit: s, value: RANK_VALUES[r] })));
-          deck.push({ rank: '小王', suit: '', value: 16 }, { rank: '大王', suit: '', value: 17 });
+          ranks.forEach(r => suits.forEach(s => deck.push(normalizeCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
+          deck.push(normalizeCard({ rank: '小王', suit: '', value: 16 }), normalizeCard({ rank: '大王', suit: '', value: 17 }));
         }
 
         for (let i = deck.length - 1; i > 0; i--) {
@@ -801,11 +719,12 @@
         }
 
         const handCount = (maxPlayers === 5) ? 20 : 17;
-        this.myHand = deck.slice(0, handCount).map(normalizeCard).sort((a,b) => b.value - a.value);
+        this.myHand = deck.slice(0, handCount).sort((a,b) => b.value - a.value);
       }
 
       sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
 
+      // 【核心零吞牌算法】：精准使用 card.id 进行防爆扣牌！
       playCards() {
         if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
         
@@ -820,9 +739,9 @@
 
         handInfo.rawCards = selectedCards;
 
-        this.myHand = this.myHand.filter(card => {
-          return !selectedCards.some(s => s.rank === card.rank && s.suit === card.suit);
-        });
+        // 终极扣手牌：精准匹配唯一 ID！绝对不通吞同点数的牌！
+        const selectedIds = new Set(selectedCards.map(c => c.id));
+        this.myHand = this.myHand.filter(card => !selectedIds.has(card.id));
 
         this.selectedIndices.clear();
 
