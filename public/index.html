@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 纯字符串流零吞牌版</title>
+  <title>CYBER LANDLORD - 高清牌面清晰可视版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -158,7 +158,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">RAW-STRING ENGINE V20.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">HIGH VISIBILITY V21.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -253,13 +253,11 @@
   <script>
     let socket = null;
 
-    // 数值与点数映射字典
     const RANK_VALUES = {
       '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // 纯文本解析卡牌点数与花色（例: "♠10" -> 点数 10，花色 ♠, 权值 10）
     function getCardValue(str) {
       if (!str) return 0;
       if (str === '大王') return 17;
@@ -322,7 +320,6 @@
         this.isAIMode = false;
         this.user = null;
         
-        // 手牌直接存纯字符串数组，例如: ["♠K", "♥10", "♦3"]
         this.myHand = [];
         this.aiHands = [[], []];
         this.selectedIndices = new Set();
@@ -558,7 +555,6 @@
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
-        // 打牌广播监听（纯文本，绝无报错崩盘可能性）
         socket.on('cards_played', (data) => {
           if (data.isClear) {
             this.tablePlayedHand = null;
@@ -655,13 +651,11 @@
           const isAiLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === currentAiId);
 
           if (isAiLeading) {
-            // AI 出最后一张牌（最小的）
             const playCard = hand.pop();
             const handInfo = { type: 'SINGLE', value: getCardValue(playCard), length: 1, rawCards: [playCard], playerId: currentAiId };
             this.lastPlayedHand = handInfo;
             this.tablePlayedHand = { username: name, rawCards: [playCard] };
           } else {
-            // AI 压牌
             const validCardIndex = hand.findIndex(c => getCardValue(c) > this.lastPlayedHand.value);
             if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
               const playCard = hand.splice(validCardIndex, 1)[0];
@@ -719,11 +713,9 @@
 
       sortHand() { this.myHand.sort((a,b) => getCardValue(b) - getCardValue(a)); this.selectedIndices.clear(); }
 
-      // 绝对稳健的索引（Index）精准扣牌！出哪张切哪张，100% 不可能吞牌！
       playCards() {
         if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
         
-        // 获取选中的索引（倒序排列）
         const sortedIndices = Array.from(this.selectedIndices).sort((a, b) => b - a);
         const selectedCards = sortedIndices.map(i => this.myHand[i]);
 
@@ -737,7 +729,6 @@
 
         handInfo.rawCards = selectedCards;
 
-        // 从大到小根据索引精确删手牌，绝对零报错
         sortedIndices.forEach(index => {
           this.myHand.splice(index, 1);
         });
@@ -786,42 +777,60 @@
         }
       }
 
-      // 纯字符串绘制图形：绝对不爆错，绝对不吞牌！
+      // 彻底修复“牌看不见”：高清明亮底框与醒目角标/文字绘制
       drawCardGraphic(cardStr, x, y, cardW, cardH, isSelected = false) {
         if (!cardStr) return;
         
-        this.ctx.fillStyle = '#0a0f1d';
+        // 1. 卡牌底色（使用明亮的深绀蓝渐变，保证绝不黑掉）
+        const grad = this.ctx.createLinearGradient(x, y, x, y + cardH);
+        grad.addColorStop(0, '#151d36');
+        grad.addColorStop(1, '#0b1124');
+        this.ctx.fillStyle = grad;
+
         this.ctx.beginPath();
         this.ctx.roundRect(x, y, cardW, cardH, 6);
         this.ctx.fill();
 
-        this.ctx.lineWidth = isSelected ? 2.5 : 1;
+        // 2. 霓虹边框与选中阴影
+        this.ctx.lineWidth = isSelected ? 2.5 : 1.2;
         this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
-        this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
-        this.ctx.shadowBlur = isSelected ? 12 : 0;
+        this.ctx.shadowColor = isSelected ? '#ff007f' : 'rgba(0, 240, 255, 0.4)';
+        this.ctx.shadowBlur = isSelected ? 15 : 6;
         this.ctx.stroke();
         this.ctx.shadowColor = 'transparent';
 
+        // 3. 颜色判定（红桃/方块/大王 为粉红色；黑桃/梅花/小王 为青蓝色）
         const isRed = cardStr.includes('♥') || cardStr.includes('♦') || cardStr === '大王';
-        this.ctx.fillStyle = isRed ? '#ff007f' : '#00f0ff';
-        
+        const textStyle = isRed ? '#ff007f' : '#00f0ff';
+
         const isMobile = this.width < 600;
-        
-        // 拆分花色与点数
-        let suit = '';
-        let rank = cardStr;
-        if (cardStr !== '大王' && cardStr !== '小王') {
-          suit = cardStr.charAt(0);
-          rank = cardStr.slice(1);
+
+        // 4. 文字与花色精确绘制
+        if (cardStr === '大王' || cardStr === '小王') {
+          // 王牌专属绘制
+          this.ctx.fillStyle = textStyle;
+          this.ctx.font = `bold ${isMobile ? 11 : 13}px sans-serif`;
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(cardStr, x + cardW / 2, y + cardH / 2 - 4);
+
+          this.ctx.font = `${isMobile ? 12 : 16}px sans-serif`;
+          this.ctx.fillText('🌟', x + cardW / 2, y + cardH / 2 + 14);
+        } else {
+          // 普通扑克牌绘制 (拆分花色与点数)
+          const suit = cardStr.charAt(0);
+          const rank = cardStr.slice(1);
+
+          // 左上角点数
+          this.ctx.fillStyle = textStyle;
+          this.ctx.font = `900 ${isMobile ? 12 : 14}px "Courier New", sans-serif`;
+          this.ctx.textAlign = 'left';
+          this.ctx.fillText(rank, x + 5, y + (isMobile ? 14 : 17));
+
+          // 居中超大花色 Icon
+          this.ctx.font = `${isMobile ? 16 : 22}px sans-serif`;
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(suit, x + cardW / 2, y + cardH / 2 + (isMobile ? 5 : 7));
         }
-
-        this.ctx.font = `bold ${isMobile ? 11 : 13}px "Courier New"`;
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText(rank, x + 4, y + (isMobile ? 12 : 15));
-
-        this.ctx.font = `${isMobile ? 13 : 16}px monospace`;
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(suit || (cardStr === '大王' ? '★' : '☆'), x + cardW / 2, y + cardH / 2 + 5);
       }
 
       renderLoop() {
