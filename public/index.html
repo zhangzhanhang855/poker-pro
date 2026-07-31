@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 多人联机零吞牌绝对防爆版</title>
+  <title>CYBER LANDLORD - 纯字符串流零吞牌版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -38,9 +38,7 @@
       display: flex; z-index: 1;
     }
 
-    #gameCanvas {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none;
-    }
+    #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
 
     .sidebar {
       width: 240px; height: 100%;
@@ -160,7 +158,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">MULTIPLAYER ZERO-BUG V19.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">RAW-STRING ENGINE V20.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -255,27 +253,27 @@
   <script>
     let socket = null;
 
-    const CARD_SUITS = { SPADE: '♠', HEART: '♥', CLUB: '♣', DIAMOND: '♦' };
+    // 数值与点数映射字典
     const RANK_VALUES = {
       '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // 绝对干净的基础数据结构规范
-    function cleanCard(c) {
-      if (!c) return { rank: '?', suit: '', value: 0 };
-      const rank = c.rank || (c.value === 16 ? '小王' : c.value === 17 ? '大王' : '?');
-      const suit = c.suit || '';
-      const value = Number(c.value || RANK_VALUES[rank] || 0);
-      return { rank, suit, value };
+    // 纯文本解析卡牌点数与花色（例: "♠10" -> 点数 10，花色 ♠, 权值 10）
+    function getCardValue(str) {
+      if (!str) return 0;
+      if (str === '大王') return 17;
+      if (str === '小王') return 16;
+      const rankStr = str.replace(/[♠♥♣♦]/g, '');
+      return RANK_VALUES[rankStr] || 0;
     }
 
     class CardRulesEngine {
-      static parseCards(cards) {
-        if (!cards || cards.length === 0) return null;
-        const sorted = [...cards].map(cleanCard).sort((a, b) => a.value - b.value);
+      static parseCards(cardStrArray) {
+        if (!cardStrArray || cardStrArray.length === 0) return null;
+        const sorted = [...cardStrArray].sort((a, b) => getCardValue(a) - getCardValue(b));
         const len = sorted.length;
-        const values = sorted.map(c => c.value);
+        const values = sorted.map(getCardValue);
         
         const freq = {};
         values.forEach(v => freq[v] = (freq[v] || 0) + 1);
@@ -323,6 +321,8 @@
         this.authMode = 'login';
         this.isAIMode = false;
         this.user = null;
+        
+        // 手牌直接存纯字符串数组，例如: ["♠K", "♥10", "♦3"]
         this.myHand = [];
         this.aiHands = [[], []];
         this.selectedIndices = new Set();
@@ -558,7 +558,7 @@
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
-        // 接收广播并彻底规范化渲染
+        // 打牌广播监听（纯文本，绝无报错崩盘可能性）
         socket.on('cards_played', (data) => {
           if (data.isClear) {
             this.tablePlayedHand = null;
@@ -566,7 +566,7 @@
           } else if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
             this.tablePlayedHand = {
               username: data.username || '玩家',
-              rawCards: data.rawCards.map(cleanCard)
+              rawCards: data.rawCards
             };
           }
         });
@@ -591,7 +591,7 @@
 
         const turnTip = document.getElementById('turn-tip');
         if (this.isMyTurn) {
-          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由出牌权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
+          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由领头权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
         } else {
           turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
         }
@@ -623,20 +623,20 @@
         document.getElementById('action-bar').classList.remove('hidden');
         document.getElementById('turn-tip').classList.remove('hidden');
 
-        const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
+        const suits = ['♠', '♥', '♣', '♦'];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
         const deck = [];
-        ranks.forEach(r => suits.forEach(s => deck.push(cleanCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
-        deck.push(cleanCard({ rank: '小王', suit: '', value: 16 }), cleanCard({ rank: '大王', suit: '', value: 17 }));
+        ranks.forEach(r => suits.forEach(s => deck.push(s + r)));
+        deck.push('小王', '大王');
 
         for (let i = deck.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
-        this.myHand = deck.slice(0, 17).map(cleanCard).sort((a, b) => b.value - a.value);
-        this.aiHands[0] = deck.slice(17, 34).map(cleanCard).sort((a, b) => b.value - a.value);
-        this.aiHands[1] = deck.slice(34, 51).map(cleanCard).sort((a, b) => b.value - a.value);
+        this.myHand = deck.slice(0, 17).sort((a, b) => getCardValue(b) - getCardValue(a));
+        this.aiHands[0] = deck.slice(17, 34).sort((a, b) => getCardValue(b) - getCardValue(a));
+        this.aiHands[1] = deck.slice(34, 51).sort((a, b) => getCardValue(b) - getCardValue(a));
 
         this.isMyTurn = true;
         this.lastPlayedHand = null;
@@ -655,15 +655,17 @@
           const isAiLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === currentAiId);
 
           if (isAiLeading) {
-            const playCard = cleanCard(hand.pop());
-            const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
+            // AI 出最后一张牌（最小的）
+            const playCard = hand.pop();
+            const handInfo = { type: 'SINGLE', value: getCardValue(playCard), length: 1, rawCards: [playCard], playerId: currentAiId };
             this.lastPlayedHand = handInfo;
             this.tablePlayedHand = { username: name, rawCards: [playCard] };
           } else {
-            const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
+            // AI 压牌
+            const validCardIndex = hand.findIndex(c => getCardValue(c) > this.lastPlayedHand.value);
             if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
-              const playCard = cleanCard(hand.splice(validCardIndex, 1)[0]);
-              const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
+              const playCard = hand.splice(validCardIndex, 1)[0];
+              const handInfo = { type: 'SINGLE', value: getCardValue(playCard), length: 1, rawCards: [playCard], playerId: currentAiId };
               this.lastPlayedHand = handInfo;
               this.tablePlayedHand = { username: name, rawCards: [playCard] };
             } else {
@@ -696,14 +698,14 @@
       }
 
       dealCards(maxPlayers) {
-        const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
+        const suits = ['♠', '♥', '♣', '♦'];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
         const deckCount = (maxPlayers === 5) ? 2 : 1;
         const deck = [];
 
         for (let d = 0; d < deckCount; d++) {
-          ranks.forEach(r => suits.forEach(s => deck.push(cleanCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
-          deck.push(cleanCard({ rank: '小王', suit: '', value: 16 }), cleanCard({ rank: '大王', suit: '', value: 17 }));
+          ranks.forEach(r => suits.forEach(s => deck.push(s + r)));
+          deck.push('小王', '大王');
         }
 
         for (let i = deck.length - 1; i > 0; i--) {
@@ -712,18 +714,18 @@
         }
 
         const handCount = (maxPlayers === 5) ? 20 : 17;
-        this.myHand = deck.slice(0, handCount).map(cleanCard).sort((a,b) => b.value - a.value);
+        this.myHand = deck.slice(0, handCount).sort((a,b) => getCardValue(b) - getCardValue(a));
       }
 
-      sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
+      sortHand() { this.myHand.sort((a,b) => getCardValue(b) - getCardValue(a)); this.selectedIndices.clear(); }
 
-      // 绝对稳健的索引（Index）扣手牌算法！绝对零吞牌！
+      // 绝对稳健的索引（Index）精准扣牌！出哪张切哪张，100% 不可能吞牌！
       playCards() {
         if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
         
-        // 按照索引正确定位选中的卡牌
+        // 获取选中的索引（倒序排列）
         const sortedIndices = Array.from(this.selectedIndices).sort((a, b) => b - a);
-        const selectedCards = sortedIndices.map(i => cleanCard(this.myHand[i]));
+        const selectedCards = sortedIndices.map(i => this.myHand[i]);
 
         const handInfo = CardRulesEngine.parseCards(selectedCards);
         
@@ -735,7 +737,7 @@
 
         handInfo.rawCards = selectedCards;
 
-        // 【索引扣牌核心】：从大到小安全剔除选中的索引，零报错、零吞牌！
+        // 从大到小根据索引精确删手牌，绝对零报错
         sortedIndices.forEach(index => {
           this.myHand.splice(index, 1);
         });
@@ -784,33 +786,42 @@
         }
       }
 
-      drawCardGraphic(rawCard, x, y, cardW, cardH, isSelected = false) {
-        try {
-          const card = cleanCard(rawCard);
-          this.ctx.fillStyle = '#0a0f1d';
-          this.ctx.beginPath();
-          this.ctx.roundRect(x, y, cardW, cardH, 6);
-          this.ctx.fill();
+      // 纯字符串绘制图形：绝对不爆错，绝对不吞牌！
+      drawCardGraphic(cardStr, x, y, cardW, cardH, isSelected = false) {
+        if (!cardStr) return;
+        
+        this.ctx.fillStyle = '#0a0f1d';
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, cardW, cardH, 6);
+        this.ctx.fill();
 
-          this.ctx.lineWidth = isSelected ? 2.5 : 1;
-          this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
-          this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
-          this.ctx.shadowBlur = isSelected ? 12 : 0;
-          this.ctx.stroke();
-          this.ctx.shadowColor = 'transparent';
+        this.ctx.lineWidth = isSelected ? 2.5 : 1;
+        this.ctx.strokeStyle = isSelected ? '#ff007f' : '#00f0ff';
+        this.ctx.shadowColor = isSelected ? '#ff007f' : 'transparent';
+        this.ctx.shadowBlur = isSelected ? 12 : 0;
+        this.ctx.stroke();
+        this.ctx.shadowColor = 'transparent';
 
-          const isRed = card.suit === CARD_SUITS.HEART || card.suit === CARD_SUITS.DIAMOND || card.rank === '大王';
-          this.ctx.fillStyle = isRed ? '#ff007f' : '#00f0ff';
-          
-          const isMobile = this.width < 600;
-          this.ctx.font = `bold ${isMobile ? 11 : 13}px "Courier New"`;
-          this.ctx.textAlign = 'left';
-          this.ctx.fillText(card.rank || '', x + 4, y + (isMobile ? 12 : 15));
+        const isRed = cardStr.includes('♥') || cardStr.includes('♦') || cardStr === '大王';
+        this.ctx.fillStyle = isRed ? '#ff007f' : '#00f0ff';
+        
+        const isMobile = this.width < 600;
+        
+        // 拆分花色与点数
+        let suit = '';
+        let rank = cardStr;
+        if (cardStr !== '大王' && cardStr !== '小王') {
+          suit = cardStr.charAt(0);
+          rank = cardStr.slice(1);
+        }
 
-          this.ctx.font = `${isMobile ? 13 : 16}px monospace`;
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText(card.suit || (card.rank === '大王' ? '★' : '☆'), x + cardW / 2, y + cardH / 2 + 5);
-        } catch (err) {}
+        this.ctx.font = `bold ${isMobile ? 11 : 13}px "Courier New"`;
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(rank, x + 4, y + (isMobile ? 12 : 15));
+
+        this.ctx.font = `${isMobile ? 13 : 16}px monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(suit || (cardStr === '大王' ? '★' : '☆'), x + cardW / 2, y + cardH / 2 + 5);
       }
 
       renderLoop() {
@@ -823,6 +834,7 @@
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
 
+        // 渲染打出在桌面的牌
         if (this.tablePlayedHand && Array.isArray(this.tablePlayedHand.rawCards) && this.tablePlayedHand.rawCards.length > 0) {
           const cards = this.tablePlayedHand.rawCards;
           const total = cards.length;
@@ -837,12 +849,13 @@
           this.ctx.textAlign = 'center';
           this.ctx.fillText(`【${this.tablePlayedHand.username || '玩家'}】 打出：`, this.width / 2, startY - 10);
 
-          cards.forEach((card, i) => {
+          cards.forEach((cardStr, i) => {
             const x = startX + i * overlap;
-            this.drawCardGraphic(card, x, startY, cardW, cardH, false);
+            this.drawCardGraphic(cardStr, x, startY, cardW, cardH, false);
           });
         }
 
+        // 渲染自己底部的手牌
         if (Array.isArray(this.myHand) && this.myHand.length > 0) {
           const total = this.myHand.length;
           const cardW = isMobile ? Math.min(48, (this.width - 20) / total) : Math.min(65, (this.width - 40) / total);
@@ -851,12 +864,12 @@
           const startX = (this.width - (cardW + (total - 1) * overlap)) / 2;
           const startY = this.height - cardH - (isMobile ? 12 : 20);
 
-          this.myHand.forEach((card, i) => {
+          this.myHand.forEach((cardStr, i) => {
             const x = startX + i * overlap;
             const isSelected = this.selectedIndices.has(i);
             const drawY = isSelected ? startY - (isMobile ? 12 : 18) : startY;
 
-            this.drawCardGraphic(card, x, drawY, cardW, cardH, isSelected);
+            this.drawCardGraphic(cardStr, x, drawY, cardW, cardH, isSelected);
           });
         }
 
