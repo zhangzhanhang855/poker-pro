@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 唯一ID精确扣牌零吞牌版</title>
+  <title>CYBER LANDLORD - 多人联机零吞牌绝对防爆版</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
@@ -160,7 +160,7 @@
       <div>
         <div class="sidebar-brand">
           <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">UNIQUE-ID ENGINE V18.0</p>
+          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">MULTIPLAYER ZERO-BUG V19.0</p>
         </div>
 
         <div class="sidebar-menu">
@@ -261,22 +261,19 @@
       'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
     };
 
-    // 全局唯一 ID 计数器，绝不重名
-    let globalCardIdCounter = 0;
-
-    function normalizeCard(rawCard) {
-      if (!rawCard) return { id: 'card_null', rank: '?', suit: '', value: 0 };
-      const rank = rawCard.rank || (rawCard.value === 16 ? '小王' : rawCard.value === 17 ? '大王' : '?');
-      const suit = rawCard.suit || '';
-      const value = rawCard.value || RANK_VALUES[rank] || 0;
-      const id = rawCard.id || `card_${rank}_${suit}_${++globalCardIdCounter}`;
-      return { id, rank, suit, value };
+    // 绝对干净的基础数据结构规范
+    function cleanCard(c) {
+      if (!c) return { rank: '?', suit: '', value: 0 };
+      const rank = c.rank || (c.value === 16 ? '小王' : c.value === 17 ? '大王' : '?');
+      const suit = c.suit || '';
+      const value = Number(c.value || RANK_VALUES[rank] || 0);
+      return { rank, suit, value };
     }
 
     class CardRulesEngine {
       static parseCards(cards) {
         if (!cards || cards.length === 0) return null;
-        const sorted = [...cards].map(normalizeCard).sort((a, b) => a.value - b.value);
+        const sorted = [...cards].map(cleanCard).sort((a, b) => a.value - b.value);
         const len = sorted.length;
         const values = sorted.map(c => c.value);
         
@@ -561,6 +558,7 @@
           this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
         });
 
+        // 接收广播并彻底规范化渲染
         socket.on('cards_played', (data) => {
           if (data.isClear) {
             this.tablePlayedHand = null;
@@ -568,7 +566,7 @@
           } else if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
             this.tablePlayedHand = {
               username: data.username || '玩家',
-              rawCards: data.rawCards.map(normalizeCard)
+              rawCards: data.rawCards.map(cleanCard)
             };
           }
         });
@@ -593,7 +591,7 @@
 
         const turnTip = document.getElementById('turn-tip');
         if (this.isMyTurn) {
-          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由领头权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
+          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由出牌权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
         } else {
           turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
         }
@@ -628,18 +626,17 @@
         const suits = [CARD_SUITS.SPADE, CARD_SUITS.HEART, CARD_SUITS.CLUB, CARD_SUITS.DIAMOND];
         const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
         const deck = [];
-        
-        ranks.forEach(r => suits.forEach(s => deck.push(normalizeCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
-        deck.push(normalizeCard({ rank: '小王', suit: '', value: 16 }), normalizeCard({ rank: '大王', suit: '', value: 17 }));
+        ranks.forEach(r => suits.forEach(s => deck.push(cleanCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
+        deck.push(cleanCard({ rank: '小王', suit: '', value: 16 }), cleanCard({ rank: '大王', suit: '', value: 17 }));
 
         for (let i = deck.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
-        this.myHand = deck.slice(0, 17).sort((a, b) => b.value - a.value);
-        this.aiHands[0] = deck.slice(17, 34).sort((a, b) => b.value - a.value);
-        this.aiHands[1] = deck.slice(34, 51).sort((a, b) => b.value - a.value);
+        this.myHand = deck.slice(0, 17).map(cleanCard).sort((a, b) => b.value - a.value);
+        this.aiHands[0] = deck.slice(17, 34).map(cleanCard).sort((a, b) => b.value - a.value);
+        this.aiHands[1] = deck.slice(34, 51).map(cleanCard).sort((a, b) => b.value - a.value);
 
         this.isMyTurn = true;
         this.lastPlayedHand = null;
@@ -649,7 +646,6 @@
         document.getElementById('turn-tip').innerText = "👉 桌面已清空，你拥有自由出牌权！";
       }
 
-      // 【核心升级】：精确 ID 扣牌，AI 逻辑绝不产生多删/少删
       triggerAITurn(aiIndex) {
         setTimeout(() => {
           const hand = this.aiHands[aiIndex];
@@ -659,17 +655,14 @@
           const isAiLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === currentAiId);
 
           if (isAiLeading) {
-            // 自由领头：拿最后一张（最小单牌）
-            const playCard = hand.pop();
+            const playCard = cleanCard(hand.pop());
             const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
             this.lastPlayedHand = handInfo;
             this.tablePlayedHand = { username: name, rawCards: [playCard] };
           } else {
-            // 压牌逻辑
             const validCardIndex = hand.findIndex(c => c.value > this.lastPlayedHand.value);
-            
             if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
-              const playCard = hand.splice(validCardIndex, 1)[0];
+              const playCard = cleanCard(hand.splice(validCardIndex, 1)[0]);
               const handInfo = { type: 'SINGLE', value: playCard.value, length: 1, rawCards: [playCard], playerId: currentAiId };
               this.lastPlayedHand = handInfo;
               this.tablePlayedHand = { username: name, rawCards: [playCard] };
@@ -709,8 +702,8 @@
         const deck = [];
 
         for (let d = 0; d < deckCount; d++) {
-          ranks.forEach(r => suits.forEach(s => deck.push(normalizeCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
-          deck.push(normalizeCard({ rank: '小王', suit: '', value: 16 }), normalizeCard({ rank: '大王', suit: '', value: 17 }));
+          ranks.forEach(r => suits.forEach(s => deck.push(cleanCard({ rank: r, suit: s, value: RANK_VALUES[r] }))));
+          deck.push(cleanCard({ rank: '小王', suit: '', value: 16 }), cleanCard({ rank: '大王', suit: '', value: 17 }));
         }
 
         for (let i = deck.length - 1; i > 0; i--) {
@@ -719,16 +712,19 @@
         }
 
         const handCount = (maxPlayers === 5) ? 20 : 17;
-        this.myHand = deck.slice(0, handCount).sort((a,b) => b.value - a.value);
+        this.myHand = deck.slice(0, handCount).map(cleanCard).sort((a,b) => b.value - a.value);
       }
 
       sortHand() { this.myHand.sort((a,b) => b.value - a.value); this.selectedIndices.clear(); }
 
-      // 【核心零吞牌算法】：精准使用 card.id 进行防爆扣牌！
+      // 绝对稳健的索引（Index）扣手牌算法！绝对零吞牌！
       playCards() {
         if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
         
-        const selectedCards = Array.from(this.selectedIndices).map(i => normalizeCard(this.myHand[i]));
+        // 按照索引正确定位选中的卡牌
+        const sortedIndices = Array.from(this.selectedIndices).sort((a, b) => b - a);
+        const selectedCards = sortedIndices.map(i => cleanCard(this.myHand[i]));
+
         const handInfo = CardRulesEngine.parseCards(selectedCards);
         
         if (!handInfo) return this.showToast('非法的出牌组合！');
@@ -739,9 +735,10 @@
 
         handInfo.rawCards = selectedCards;
 
-        // 终极扣手牌：精准匹配唯一 ID！绝对不通吞同点数的牌！
-        const selectedIds = new Set(selectedCards.map(c => c.id));
-        this.myHand = this.myHand.filter(card => !selectedIds.has(card.id));
+        // 【索引扣牌核心】：从大到小安全剔除选中的索引，零报错、零吞牌！
+        sortedIndices.forEach(index => {
+          this.myHand.splice(index, 1);
+        });
 
         this.selectedIndices.clear();
 
@@ -789,7 +786,7 @@
 
       drawCardGraphic(rawCard, x, y, cardW, cardH, isSelected = false) {
         try {
-          const card = normalizeCard(rawCard);
+          const card = cleanCard(rawCard);
           this.ctx.fillStyle = '#0a0f1d';
           this.ctx.beginPath();
           this.ctx.roundRect(x, y, cardW, cardH, 6);
