@@ -2,40 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>UNO Arena - HTML5 Canvas Full-Stack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>UNO Arena - Fixed Responsive Canvas</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body, html { 
+      width: 100%; height: 100%; overflow: hidden; background: #0f172a; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      touch-action: none; overscroll-behavior: none;
+    }
     #canvas-container { width: 100vw; height: 100vh; position: relative; }
-    canvas { display: block; width: 100%; height: 100%; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     
-    /* DOM Overlays for color picker modal */
     .modal-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.75); display: none;
+      background: rgba(0, 0, 0, 0.8); display: none;
       align-items: center; justify-content: center; z-index: 100;
     }
     .modal-box {
       background: #1e293b; border: 2px solid #38bdf8; border-radius: 16px;
-      padding: 24px; text-align: center; color: white; width: 320px;
+      padding: 24px; text-align: center; color: white; width: 320px; max-width: 90vw;
     }
     .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
     .color-btn {
       height: 60px; border-radius: 12px; border: none; font-weight: bold;
-      font-size: 18px; color: white; cursor: pointer; transition: transform 0.1s;
+      font-size: 18px; color: white; cursor: pointer;
     }
-    .color-btn:hover { transform: scale(1.05); }
     .bg-Red { background: #ef4444; } .bg-Yellow { background: #eab308; color: #000; }
     .bg-Green { background: #22c55e; } .bg-Blue { background: #3b82f6; }
 
-    /* Action overlay buttons */
     .btn-action {
-      padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold;
-      font-size: 16px; cursor: pointer; color: white; transition: background 0.2s;
+      padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold;
+      font-size: 16px; cursor: pointer; color: white;
     }
-    .btn-accept { background: #22c55e; } .btn-accept:hover { background: #16a34a; }
-    .btn-challenge { background: #ef4444; } .btn-challenge:hover { background: #dc2626; }
+    .btn-accept { background: #22c55e; }
+    .btn-challenge { background: #ef4444; }
   </style>
   <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -44,7 +45,6 @@
 <div id="canvas-container">
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Color Selection Modal -->
   <div id="colorModal" class="modal-overlay">
     <div class="modal-box">
       <h3>Select Active Wild Color</h3>
@@ -57,7 +57,6 @@
     </div>
   </div>
 
-  <!-- Challenge Modal -->
   <div id="challengeModal" class="modal-overlay">
     <div class="modal-box">
       <h3 id="challengeTitle">Wild +4 Played!</h3>
@@ -79,7 +78,6 @@ let myId = null;
 let gameState = null;
 let pendingWildCardId = null;
 
-// Card Layout Rectangles for click detection
 let cardRects = [];
 let drawPileRect = null;
 let unoButtonRect = null;
@@ -93,9 +91,12 @@ const COLOR_MAP = {
   'Wild': '#8b5cf6'
 };
 
+// Fix HDPI canvas scaling (Retina screens / Mobile display density)
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  ctx.scale(dpr, dpr);
   render();
 }
 window.addEventListener('resize', resizeCanvas);
@@ -114,7 +115,6 @@ socket.on('gameState', (state) => {
 
 function checkModals() {
   if (!gameState) return;
-  // Handle Challenge modal display
   const challengeModal = document.getElementById('challengeModal');
   if (gameState.pendingChallenge && gameState.pendingChallenge.victimId === myId) {
     document.getElementById('challengeTitle').innerText = `${gameState.pendingChallenge.blufferName} played Wild +4!`;
@@ -138,13 +138,15 @@ function respondChallenge(doChallenge) {
 }
 
 // ==========================================
-// CANVAS RENDER ENGINE
+// RENDER ENGINE (Uses CSS Viewport Units)
 // ==========================================
 function render() {
-  const W = canvas.width;
-  const H = canvas.height;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
 
-  // Background gradient
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
   const bgGradient = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, Math.max(W, H));
   bgGradient.addColorStop(0, '#1e293b');
   bgGradient.addColorStop(1, '#0f172a');
@@ -154,14 +156,15 @@ function render() {
   if (!gameState) return;
 
   cardRects = [];
+  startButtonRect = null;
+  drawPileRect = null;
+  unoButtonRect = null;
 
-  // Lobby view if game not started
   if (!gameState.gameStarted) {
     renderLobby(W, H);
     return;
   }
 
-  // Active Game Board
   renderHeader(W, H);
   renderTableCenter(W, H);
   renderOpponents(W, H);
@@ -171,110 +174,87 @@ function render() {
 
 function renderLobby(W, H) {
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 36px 'Segoe UI', sans-serif";
+  ctx.font = "bold 32px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("UNO ARENA LOBBY", W / 2, H / 2 - 120);
 
-  ctx.font = "20px 'Segoe UI', sans-serif";
+  ctx.font = "18px sans-serif";
   ctx.fillStyle = "#94a3b8";
-  ctx.fillText(`Connected Players (${gameState.players.length}/4):`, W / 2, H / 2 - 60);
+  ctx.fillText(`Connected Players (${gameState.players.length}):`, W / 2, H / 2 - 60);
 
   gameState.players.forEach((p, idx) => {
     ctx.fillStyle = p.id === myId ? "#38bdf8" : "#ffffff";
-    ctx.font = "18px 'Segoe UI', sans-serif";
+    ctx.font = "18px sans-serif";
     ctx.fillText(`${idx + 1}. ${p.name} ${p.id === myId ? '(You)' : ''}`, W / 2, H / 2 - 20 + (idx * 30));
   });
 
   if (gameState.players.length >= 2) {
-    const btnW = 200, btnH = 50;
+    const btnW = 240, btnH = 60;
     const btnX = W / 2 - btnW / 2;
-    const btnY = H / 2 + 120;
+    const btnY = H / 2 + 100;
     startButtonRect = { x: btnX, y: btnY, w: btnW, h: btnH };
 
     ctx.fillStyle = "#22c55e";
     roundRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 20px 'Segoe UI', sans-serif";
-    ctx.fillText("START GAME", W / 2, btnY + 32);
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText("START GAME", W / 2, btnY + 38);
   } else {
     ctx.fillStyle = "#f59e0b";
-    ctx.font = "italic 16px 'Segoe UI', sans-serif";
-    ctx.fillText("Waiting for at least 2 players to join...", W / 2, H / 2 + 140);
+    ctx.font = "italic 16px sans-serif";
+    ctx.fillText("Waiting for at least 2 players to join...", W / 2, H / 2 + 120);
   }
 }
 
 function renderHeader(W, H) {
-  // Scoreboard / Status bar
   ctx.fillStyle = "#1e293b";
-  ctx.fillRect(0, 0, W, 60);
-  ctx.strokeStyle = "#334155";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0, 0, W, 60);
-
+  ctx.fillRect(0, 0, W, 50);
   ctx.fillStyle = "#38bdf8";
-  ctx.font = "bold 20px 'Segoe UI', sans-serif";
+  ctx.font = "bold 18px sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("UNO Arena", 20, 36);
+  ctx.fillText("UNO Arena", 15, 32);
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "16px 'Segoe UI', sans-serif";
-  ctx.textAlign = "right";
-  
   const curPlayer = gameState.players[gameState.currentTurnIndex];
   const isMyTurn = curPlayer?.id === myId;
-  
-  ctx.fillText(`Turn: ${curPlayer ? curPlayer.name : ''} ${isMyTurn ? '(YOUR TURN!)' : ''}`, W - 20, 36);
+  ctx.fillStyle = isMyTurn ? "#22c55e" : "#ffffff";
+  ctx.font = "bold 16px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(`Turn: ${curPlayer ? curPlayer.name : ''} ${isMyTurn ? '(YOUR TURN)' : ''}`, W - 15, 32);
 }
 
 function renderTableCenter(W, H) {
   const cX = W / 2;
-  const cY = H / 2 - 30;
+  const cY = H / 2 - 20;
 
-  // Render Direction Indicator
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(cX, cY, 140, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Active Color indicator aura
   ctx.fillStyle = COLOR_MAP[gameState.currentColor] || '#ffffff';
-  ctx.globalAlpha = 0.2;
+  ctx.globalAlpha = 0.25;
   ctx.beginPath();
-  ctx.arc(cX + 60, cY, 70, 0, Math.PI * 2);
+  ctx.arc(cX, cY, 80, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1.0;
 
-  // Draw Pile (Back of Card)
-  const cardW = 90, cardH = 135;
-  const drawX = cX - 110, drawY = cY - cardH / 2;
+  const cardW = 80, cardH = 120;
+  const drawX = cX - 95, drawY = cY - cardH / 2;
   drawPileRect = { x: drawX, y: drawY, w: cardW, h: cardH };
-
   renderCardBack(drawX, drawY, cardW, cardH, `Draw (${gameState.drawPileCount})`);
 
-  // Discard Pile Top Card
   const discardX = cX + 15, discardY = cY - cardH / 2;
   if (gameState.topDiscard) {
     renderCardFace(discardX, discardY, cardW, cardH, gameState.topDiscard, false);
   }
 
-  // Draw UNO Shout Button
-  const unoW = 80, unoH = 80;
-  const unoX = cX + 130, unoY = cY - unoH / 2;
+  const unoW = 70, unoH = 70;
+  const unoX = cX + 110, unoY = cY - unoH / 2;
   unoButtonRect = { x: unoX, y: unoY, w: unoW, h: unoH };
 
   ctx.fillStyle = "#ef4444";
   ctx.beginPath();
   ctx.arc(unoX + unoW/2, unoY + unoH/2, unoW/2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#ffffff";
-  ctx.stroke();
-
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 22px 'Segoe UI', sans-serif";
+  ctx.font = "bold 18px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("UNO!", unoX + unoW/2, unoY + unoH/2 + 8);
+  ctx.fillText("UNO!", unoX + unoW/2, unoY + unoH/2 + 6);
 }
 
 function renderOpponents(W, H) {
@@ -285,28 +265,21 @@ function renderOpponents(W, H) {
   const startX = W / (total + 1);
   opponents.forEach((p, i) => {
     const x = startX * (i + 1);
-    const y = 90;
+    const y = 65;
 
-    // Active Highlight box
     if (p.isCurrent) {
-      ctx.fillStyle = "rgba(56, 189, 248, 0.2)";
-      roundRect(ctx, x - 70, y - 10, 140, 95, 8, true, false);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+      roundRect(ctx, x - 60, y - 5, 120, 60, 8, true, false);
     }
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 16px 'Segoe UI', sans-serif";
+    ctx.font = "bold 14px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(p.name, x, y + 12);
+    ctx.fillText(p.name, x, y + 15);
 
-    ctx.font = "14px 'Segoe UI', sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.fillStyle = "#cbd5e1";
-    ctx.fillText(`Cards: ${p.cardCount} | Score: ${p.totalScore}`, x, y + 34);
-
-    if (p.calledUno) {
-      ctx.fillStyle = "#ef4444";
-      ctx.font = "bold 14px 'Segoe UI', sans-serif";
-      ctx.fillText("📣 CALLED UNO!", x, y + 56);
-    }
+    ctx.fillText(`Cards: ${p.cardCount} | Score: ${p.totalScore}`, x, y + 35);
   });
 }
 
@@ -314,53 +287,42 @@ function renderMyHand(W, H) {
   const hand = gameState.myHand;
   if (!hand) return;
 
-  const cardW = 100, cardH = 150;
-  const spacing = Math.min(cardW + 10, (W - 200) / Math.max(hand.length, 1));
+  const cardW = Math.min(90, (W - 40) / Math.max(hand.length, 1));
+  const cardH = cardW * 1.4;
+  const spacing = Math.min(cardW + 5, (W - 60) / Math.max(hand.length, 1));
   const totalWidth = (hand.length - 1) * spacing + cardW;
   const startX = (W - totalWidth) / 2;
-  const startY = H - cardH - 30;
+  const startY = H - cardH - 25;
 
   hand.forEach((card, idx) => {
     const x = startX + idx * spacing;
     const y = startY;
     
-    // Check match playability for glow effect
     const curPlayer = gameState.players[gameState.currentTurnIndex];
     const isMyTurn = curPlayer?.id === myId;
-    let isPlayable = false;
-    
-    if (isMyTurn) {
-      if (card.color === 'Wild' || card.color === gameState.currentColor || card.value === gameState.activeValue) {
-        isPlayable = true;
-      }
-    }
+    let isPlayable = isMyTurn && (card.color === 'Wild' || card.color === gameState.currentColor || card.value === gameState.activeValue);
 
-    cardRects.push({ x, y, w: cardW, h: cardH, card, isPlayable });
-    renderCardFace(x, y - (isPlayable ? 15 : 0), cardW, cardH, card, isPlayable);
+    cardRects.push({ x, y, w: cardW, h: cardH, card });
+    renderCardFace(x, y - (isPlayable ? 12 : 0), cardW, cardH, card, isPlayable);
   });
 }
 
 function renderCardFace(x, y, w, h, card, highlight) {
-  // Glow outline if playable
   if (highlight) {
-    ctx.shadowColor = "#f59e0b";
-    ctx.shadowBlur = 12;
+    ctx.fillStyle = "#f59e0b";
+    roundRect(ctx, x-2, y-2, w+4, h+4, 10, true, false);
   }
 
-  // Outer border & fill
   ctx.fillStyle = COLOR_MAP[card.color] || '#334155';
-  roundRect(ctx, x, y, w, h, 10, true, true);
-  ctx.shadowBlur = 0; // reset shadow
+  roundRect(ctx, x, y, w, h, 8, true, true);
 
-  // Inner oval frame
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.ellipse(x + w/2, y + h/2, w/2.6, h/2.4, Math.PI / 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Text / Symbol
   ctx.fillStyle = COLOR_MAP[card.color] === '#eab308' ? '#000000' : (card.color === 'Wild' ? '#8b5cf6' : COLOR_MAP[card.color]);
-  ctx.font = "bold 26px 'Segoe UI', sans-serif";
+  ctx.font = `bold ${Math.floor(w * 0.3)}px sans-serif`;
   ctx.textAlign = "center";
   
   let displayText = card.value;
@@ -369,14 +331,14 @@ function renderCardFace(x, y, w, h, card, highlight) {
   if (card.value === 'Skip') displayText = '🚫';
   if (card.value === 'Reverse') displayText = '🔄';
 
-  ctx.fillText(displayText, x + w/2, y + h/2 + 9);
+  ctx.fillText(displayText, x + w/2, y + h/2 + (w * 0.1));
 }
 
 function renderCardBack(x, y, w, h, label) {
   ctx.fillStyle = "#1e293b";
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 2;
-  roundRect(ctx, x, y, w, h, 10, true, true);
+  roundRect(ctx, x, y, w, h, 8, true, true);
 
   ctx.fillStyle = "#ef4444";
   ctx.beginPath();
@@ -384,27 +346,26 @@ function renderCardBack(x, y, w, h, label) {
   ctx.fill();
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 14px 'Segoe UI', sans-serif";
+  ctx.font = "bold 12px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(label, x + w/2, y + h/2 + 5);
+  ctx.fillText(label, x + w/2, y + h/2 + 4);
 }
 
 function renderLogs(W, H) {
-  const logX = 20, logY = H - 180;
-  ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
-  roundRect(ctx, logX, logY, 300, 160, 8, true, false);
+  const logX = 15, logY = H - 140;
+  ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+  roundRect(ctx, logX, logY, 220, 120, 6, true, false);
 
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "bold 12px 'Segoe UI', sans-serif";
+  ctx.font = "bold 11px sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("GAME LOGS", logX + 10, logY + 20);
+  ctx.fillText("LOGS", logX + 8, logY + 16);
 
-  ctx.font = "11px 'Segoe UI', sans-serif";
+  ctx.font = "10px sans-serif";
   ctx.fillStyle = "#cbd5e1";
   const logs = gameState.logs || [];
-  const displayLogs = logs.slice(-7);
-  displayLogs.forEach((l, idx) => {
-    ctx.fillText(l, logX + 10, logY + 38 + (idx * 17));
+  logs.slice(-5).forEach((l, idx) => {
+    ctx.fillText(l, logX + 8, logY + 32 + (idx * 16));
   });
 }
 
@@ -425,16 +386,17 @@ function roundRect(ctx, x, y, w, h, radius, fill, stroke) {
 }
 
 // ==========================================
-// USER INTERACTION CANVAS EVENTS
+// UNIFIED POINTER EVENT (TOUCH + MOUSE)
 // ==========================================
-canvas.addEventListener('click', (e) => {
+function handlePointerInput(e) {
+  e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
 
   if (!gameState) return;
 
-  // Lobby start click
+  // Lobby start button click
   if (!gameState.gameStarted && startButtonRect) {
     if (clickX >= startButtonRect.x && clickX <= startButtonRect.x + startButtonRect.w &&
         clickY >= startButtonRect.y && clickY <= startButtonRect.y + startButtonRect.h) {
@@ -472,8 +434,11 @@ canvas.addEventListener('click', (e) => {
       break;
     }
   }
-});
+}
+
+// Attach Pointer Events to avoid screen coordinate mismatch
+canvas.addEventListener('pointerdown', handlePointerInput);
+window.onload = resizeCanvas;
 </script>
 </body>
 </html>
-
