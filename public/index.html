@@ -1,920 +1,479 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CYBER LANDLORD - 桌面渲染解耦完美版</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>UNO Arena - HTML5 Canvas Full-Stack</title>
   <style>
-    :root {
-      --cyber-pink: #ff007f;
-      --cyber-cyan: #00f0ff;
-      --cyber-yellow: #facc15;
-      --cyber-purple: #7000ff;
-      --bg-dark: #05070f;
-      --panel-bg: rgba(10, 15, 29, 0.92);
-      --border-cyber: rgba(0, 240, 255, 0.35);
-      --shadow-cyber: 0 0 35px rgba(0, 240, 255, 0.25);
-    }
-
-    * {
-      box-sizing: border-box; margin: 0; padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    #canvas-container { width: 100vw; height: 100vh; position: relative; }
+    canvas { display: block; width: 100%; height: 100%; }
     
-    html, body {
-      width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-dark);
-      display: flex; justify-content: center; align-items: center;
-      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    /* DOM Overlays for color picker modal */
+    .modal-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75); display: none;
+      align-items: center; justify-content: center; z-index: 100;
     }
-
-    #game-container {
-      position: relative; width: 100vw; height: 100vh;
-      max-width: 1440px; max-height: 1024px;
-      background: radial-gradient(circle at 50% 30%, #0d1527 0%, #03050a 100%);
-      border: 1px solid rgba(0, 240, 255, 0.25);
-      box-shadow: 0 0 100px rgba(0, 240, 255, 0.2); overflow: hidden;
-      display: flex; z-index: 1;
+    .modal-box {
+      background: #1e293b; border: 2px solid #38bdf8; border-radius: 16px;
+      padding: 24px; text-align: center; color: white; width: 320px;
     }
-
-    #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
-
-    .sidebar {
-      width: 240px; height: 100%;
-      background: rgba(8, 12, 23, 0.96); backdrop-filter: blur(20px);
-      border-right: 1px solid var(--border-cyber);
-      z-index: 50; display: flex; flex-direction: column; justify-content: space-between;
-      padding: 20px 14px; pointer-events: auto; transition: all 0.3s ease;
+    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .color-btn {
+      height: 60px; border-radius: 12px; border: none; font-weight: bold;
+      font-size: 18px; color: white; cursor: pointer; transition: transform 0.1s;
     }
+    .color-btn:hover { transform: scale(1.05); }
+    .bg-Red { background: #ef4444; } .bg-Yellow { background: #eab308; color: #000; }
+    .bg-Green { background: #22c55e; } .bg-Blue { background: #3b82f6; }
 
-    @media (max-width: 768px) {
-      .sidebar { width: 180px; padding: 12px 8px; }
-      .sidebar-brand h2 { font-size: 1.1rem !important; }
-      .nav-item { font-size: 12px !important; padding: 10px 8px !important; }
+    /* Action overlay buttons */
+    .btn-action {
+      padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold;
+      font-size: 16px; cursor: pointer; color: white; transition: background 0.2s;
     }
-
-    .sidebar-brand h2 {
-      font-size: 1.35rem;
-      background: linear-gradient(135deg, var(--cyber-cyan) 0%, var(--cyber-pink) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      font-weight: 900; letter-spacing: 2px; text-align: center;
-    }
-
-    .sidebar-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
-    .nav-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px; border-radius: 10px;
-      color: #8a99ad; font-size: 14px; font-weight: bold;
-      cursor: pointer; transition: all 0.25s ease; border: 1px solid transparent;
-    }
-    .nav-item:hover { background: rgba(0, 240, 255, 0.1); color: #fff; border-color: rgba(0, 240, 255, 0.3); }
-    .nav-item.active {
-      background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(255, 0, 127, 0.12) 100%);
-      border-color: var(--cyber-cyan); color: var(--cyber-cyan);
-    }
-
-    .sidebar-user {
-      background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 10px;
-    }
-
-    .main-viewport { flex: 1; height: 100%; position: relative; pointer-events: none; z-index: 10; }
-    .hidden { display: none !important; }
-
-    .view-panel {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: var(--panel-bg); backdrop-filter: blur(20px);
-      border: 1px solid var(--cyber-cyan); border-radius: 20px;
-      padding: 28px; width: 92%; max-width: 460px; text-align: center;
-      box-shadow: var(--shadow-cyber); pointer-events: auto; z-index: 20;
-    }
-
-    .panel-title { font-size: 22px; color: var(--cyber-cyan); margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; }
-
-    .input-field, select.input-field {
-      width: 100%; padding: 12px 16px; border-radius: 10px;
-      border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(5, 7, 15, 0.85);
-      color: #fff; font-size: 14px; margin-bottom: 14px; outline: none;
-    }
-
-    .btn {
-      padding: 12px 24px; border-radius: 10px; border: none; font-size: 13px; font-weight: 900;
-      cursor: pointer; outline: none; transition: all 0.2s;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); pointer-events: auto;
-      display: inline-flex; align-items: center; justify-content: center;
-    }
-    .btn:hover { transform: translateY(-2px); filter: brightness(1.25); }
-    .btn:active { transform: scale(0.95); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
-
-    .btn-cyber { background: linear-gradient(135deg, var(--cyber-cyan) 0%, #0072ff 100%); color: #000; }
-    .btn-pink { background: linear-gradient(135deg, var(--cyber-pink) 0%, var(--cyber-purple) 100%); color: #fff; }
-    .btn-gold { background: linear-gradient(135deg, var(--cyber-yellow) 0%, #d97706 100%); color: #000; }
-    .btn-dark { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.15); }
-
-    .action-bar {
-      position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 12px; z-index: 20; pointer-events: auto; width: 90%; max-width: 420px; justify-content: center;
-    }
-    .action-bar .btn { flex: 1; padding: 12px 14px; font-size: 13px; }
-
-    .turn-tip {
-      position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%);
-      background: rgba(5, 7, 15, 0.92); border: 1px solid var(--cyber-cyan);
-      padding: 8px 24px; border-radius: 20px; color: var(--cyber-cyan);
-      font-weight: bold; font-size: 13px; pointer-events: none; box-shadow: var(--shadow-cyber);
-      white-space: nowrap;
-    }
-
-    .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
-    .auth-tab { flex: 1; padding: 12px; color: #8a99ad; font-weight: bold; cursor: pointer; }
-    .auth-tab.active { color: var(--cyber-cyan); border-bottom: 2px solid var(--cyber-cyan); }
-
-    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 260px; overflow-y: auto; margin-bottom: 18px; }
-    .shop-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 14px; padding: 12px; text-align: center; }
-
-    .toast-container {
-      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-      z-index: 999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 90%; max-width: 380px; text-align: center;
-    }
-    .toast-msg {
-      background: rgba(10, 15, 29, 0.96); border: 1px solid var(--cyber-cyan);
-      color: #fff; padding: 10px 22px; border-radius: 30px; font-size: 13px; font-weight: bold;
-      box-shadow: 0 0 25px rgba(0, 240, 255, 0.4); animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
-    }
-    @keyframes toastIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+    .btn-accept { background: #22c55e; } .btn-accept:hover { background: #16a34a; }
+    .btn-challenge { background: #ef4444; } .btn-challenge:hover { background: #dc2626; }
   </style>
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-  <div id="game-container">
-    <canvas id="gameCanvas"></canvas>
+<div id="canvas-container">
+  <canvas id="gameCanvas"></canvas>
 
-    <div class="toast-container" id="toast-container"></div>
-
-    <div class="sidebar hidden" id="main-sidebar">
-      <div>
-        <div class="sidebar-brand">
-          <h2>CYBER LANDLORD</h2>
-          <p style="color: #64748b; font-size: 8px; margin-top: 4px; letter-spacing: 1px;">TABLE RENDER FIX V24.0</p>
-        </div>
-
-        <div class="sidebar-menu">
-          <div class="nav-item active" id="nav-lobby" onclick="gameApp.switchView('lobby')">
-            <span>🎮</span> 赛博大厅
-          </div>
-          <div class="nav-item" id="nav-shop" onclick="gameApp.switchView('shop')">
-            <span>🛒</span> 道具商城
-          </div>
-          <div class="nav-item" id="nav-2fa" onclick="gameApp.switchView('2fa')">
-            <span>🔐</span> 2FA 验证
-          </div>
-        </div>
-      </div>
-
-      <div class="sidebar-user">
-        <div style="font-size:24px;" id="sidebar-avatar">🤖</div>
-        <div>
-          <div style="color:#fff; font-size:13px; font-weight:bold;" id="sidebar-username">玩家</div>
-          <div style="color:var(--cyber-yellow); font-size:12px;">🪙 <span id="sidebar-coins">0</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="main-viewport">
-      <div class="turn-tip hidden" id="turn-tip">SYSTEM: WAITING...</div>
-
-      <div class="action-bar hidden" id="action-bar">
-        <button class="btn btn-dark" id="btn-pass" onclick="gameApp.passTurn()">PASS / 不出</button>
-        <button class="btn btn-cyber" onclick="gameApp.sortHand()">理牌</button>
-        <button class="btn btn-pink" id="btn-play" onclick="gameApp.playCards()">确认出牌</button>
-      </div>
-
-      <div class="view-panel" id="panel-auth">
-        <div class="panel-title">CYBER AUTHENTICATION</div>
-        <div class="auth-tabs">
-          <div class="auth-tab active" id="tab-login" onclick="gameApp.switchAuthTab('login')">登录</div>
-          <div class="auth-tab" id="tab-register" onclick="gameApp.switchAuthTab('register')">注册</div>
-        </div>
-
-        <input type="text" id="auth-username" class="input-field" placeholder="玩家账号" value="JR玩家" />
-        <input type="password" id="auth-password" class="input-field" placeholder="密码" value="123456" />
-        <input type="text" id="auth-2fa-input" class="input-field hidden" placeholder="输入 6 位 2FA 动态验证码" maxlength="6" />
-
-        <button class="btn btn-cyber" id="auth-submit-btn" style="width: 100%; margin-top: 6px;" onclick="gameApp.handleAuth()">访问节点</button>
-      </div>
-
-      <div class="view-panel hidden" id="panel-lobby">
-        <div class="panel-title">🎮 对局模式选择</div>
-        
-        <label style="color:#8a99ad; font-size:11px; display:block; text-align:left; margin-bottom:4px;">选择模式类型：</label>
-        <select id="room-mode-select" class="input-field">
-          <option value="2">二人联机 PK 模式 (1副牌)</option>
-          <option value="3">三人联机经典斗地主 (1副牌)</option>
-          <option value="5">五人联机双副牌模式 (2副牌)</option>
-          <option value="AI">🤖 离线单人对战 AI (随时开局)</option>
-        </select>
-
-        <input type="text" id="room-input" class="input-field" placeholder="输入/创建房间号 (例如: 888)" value="888" />
-        
-        <div style="display: flex; gap: 12px; margin-top: 6px;">
-          <button class="btn btn-cyber" style="flex: 1;" onclick="gameApp.createRoom()">构建房间</button>
-          <button class="btn btn-pink" style="flex: 1;" onclick="gameApp.joinRoom()">加入房间</button>
-        </div>
-      </div>
-
-      <div class="view-panel hidden" id="panel-shop">
-        <div class="panel-title">🛒 赛博装备商城</div>
-        <div class="shop-grid" id="shop-grid"></div>
-        <button class="btn btn-dark" style="width: 100%;" onclick="gameApp.switchView('lobby')">返回大厅</button>
-      </div>
-
-      <div class="view-panel hidden" id="panel-2fa">
-        <div class="panel-title">🔐 2FA 安全验证绑定</div>
-        <p style="color:#8a99ad; font-size:11px; margin-bottom:12px;">使用 Authenticator App 扫描二维码：</p>
-        
-        <div id="2fa-setup-box">
-          <button class="btn btn-gold" onclick="gameApp.generate2FA()">生成 2FA 密钥</button>
-        </div>
-
-        <div id="2fa-qr-box" class="hidden">
-          <div style="background:#fff; padding:8px; border-radius:10px; display:inline-block; margin-bottom:12px;">
-            <img id="2fa-qr-img" src="" style="width:130px; height:130px; display:block;" />
-          </div>
-          <input type="text" id="verify-2fa-input" class="input-field" placeholder="输入 6 位验证码" maxlength="6" />
-          <button class="btn btn-cyber" style="width:100%" onclick="gameApp.verify2FA()">激活 2FA 绑定</button>
-        </div>
+  <!-- Color Selection Modal -->
+  <div id="colorModal" class="modal-overlay">
+    <div class="modal-box">
+      <h3>Select Active Wild Color</h3>
+      <div class="modal-grid">
+        <button class="color-btn bg-Red" onclick="selectWildColor('Red')">Red</button>
+        <button class="color-btn bg-Yellow" onclick="selectWildColor('Yellow')">Yellow</button>
+        <button class="color-btn bg-Green" onclick="selectWildColor('Green')">Green</button>
+        <button class="color-btn bg-Blue" onclick="selectWildColor('Blue')">Blue</button>
       </div>
     </div>
   </div>
 
-  <script>
-    let socket = null;
+  <!-- Challenge Modal -->
+  <div id="challengeModal" class="modal-overlay">
+    <div class="modal-box">
+      <h3 id="challengeTitle">Wild +4 Played!</h3>
+      <p style="margin: 12px 0; font-size: 14px; color: #cbd5e1;">Do you want to challenge if they had a matching color in hand?</p>
+      <div style="display:flex; gap: 12px; justify-content: center;">
+        <button class="btn-action btn-accept" onclick="respondChallenge(false)">Accept (+4)</button>
+        <button class="btn-action btn-challenge" onclick="respondChallenge(true)">Challenge!</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    const RANK_VALUES = {
-      '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-      'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15, '小王': 16, '大王': 17
-    };
+<script>
+const socket = io();
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-    function getCardValue(str) {
-      if (!str) return 0;
-      if (str === '大王') return 17;
-      if (str === '小王') return 16;
-      const rankStr = str.replace(/[♠♥♣♦]/g, '');
-      return RANK_VALUES[rankStr] || 0;
+let myId = null;
+let gameState = null;
+let pendingWildCardId = null;
+
+// Card Layout Rectangles for click detection
+let cardRects = [];
+let drawPileRect = null;
+let unoButtonRect = null;
+let startButtonRect = null;
+
+const COLOR_MAP = {
+  'Red': '#ef4444',
+  'Yellow': '#eab308',
+  'Green': '#22c55e',
+  'Blue': '#3b82f6',
+  'Wild': '#8b5cf6'
+};
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+socket.on('joined', (data) => {
+  myId = data.id;
+  const playerName = prompt("Enter your Player Name:", "Player " + Math.floor(Math.random() * 900 + 100));
+  socket.emit('joinGame', playerName || "Anonymous");
+});
+
+socket.on('gameState', (state) => {
+  gameState = state;
+  checkModals();
+  render();
+});
+
+function checkModals() {
+  if (!gameState) return;
+  // Handle Challenge modal display
+  const challengeModal = document.getElementById('challengeModal');
+  if (gameState.pendingChallenge && gameState.pendingChallenge.victimId === myId) {
+    document.getElementById('challengeTitle').innerText = `${gameState.pendingChallenge.blufferName} played Wild +4!`;
+    challengeModal.style.display = 'flex';
+  } else {
+    challengeModal.style.display = 'none';
+  }
+}
+
+function selectWildColor(color) {
+  document.getElementById('colorModal').style.display = 'none';
+  if (pendingWildCardId !== null) {
+    socket.emit('playCard', { cardId: pendingWildCardId, chosenColor: color });
+    pendingWildCardId = null;
+  }
+}
+
+function respondChallenge(doChallenge) {
+  document.getElementById('challengeModal').style.display = 'none';
+  socket.emit('resolveChallenge', doChallenge);
+}
+
+// ==========================================
+// CANVAS RENDER ENGINE
+// ==========================================
+function render() {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Background gradient
+  const bgGradient = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, Math.max(W, H));
+  bgGradient.addColorStop(0, '#1e293b');
+  bgGradient.addColorStop(1, '#0f172a');
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(0, 0, W, H);
+
+  if (!gameState) return;
+
+  cardRects = [];
+
+  // Lobby view if game not started
+  if (!gameState.gameStarted) {
+    renderLobby(W, H);
+    return;
+  }
+
+  // Active Game Board
+  renderHeader(W, H);
+  renderTableCenter(W, H);
+  renderOpponents(W, H);
+  renderMyHand(W, H);
+  renderLogs(W, H);
+}
+
+function renderLobby(W, H) {
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 36px 'Segoe UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("UNO ARENA LOBBY", W / 2, H / 2 - 120);
+
+  ctx.font = "20px 'Segoe UI', sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText(`Connected Players (${gameState.players.length}/4):`, W / 2, H / 2 - 60);
+
+  gameState.players.forEach((p, idx) => {
+    ctx.fillStyle = p.id === myId ? "#38bdf8" : "#ffffff";
+    ctx.font = "18px 'Segoe UI', sans-serif";
+    ctx.fillText(`${idx + 1}. ${p.name} ${p.id === myId ? '(You)' : ''}`, W / 2, H / 2 - 20 + (idx * 30));
+  });
+
+  if (gameState.players.length >= 2) {
+    const btnW = 200, btnH = 50;
+    const btnX = W / 2 - btnW / 2;
+    const btnY = H / 2 + 120;
+    startButtonRect = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+    ctx.fillStyle = "#22c55e";
+    roundRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 20px 'Segoe UI', sans-serif";
+    ctx.fillText("START GAME", W / 2, btnY + 32);
+  } else {
+    ctx.fillStyle = "#f59e0b";
+    ctx.font = "italic 16px 'Segoe UI', sans-serif";
+    ctx.fillText("Waiting for at least 2 players to join...", W / 2, H / 2 + 140);
+  }
+}
+
+function renderHeader(W, H) {
+  // Scoreboard / Status bar
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(0, 0, W, 60);
+  ctx.strokeStyle = "#334155";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, 0, W, 60);
+
+  ctx.fillStyle = "#38bdf8";
+  ctx.font = "bold 20px 'Segoe UI', sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("UNO Arena", 20, 36);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "16px 'Segoe UI', sans-serif";
+  ctx.textAlign = "right";
+  
+  const curPlayer = gameState.players[gameState.currentTurnIndex];
+  const isMyTurn = curPlayer?.id === myId;
+  
+  ctx.fillText(`Turn: ${curPlayer ? curPlayer.name : ''} ${isMyTurn ? '(YOUR TURN!)' : ''}`, W - 20, 36);
+}
+
+function renderTableCenter(W, H) {
+  const cX = W / 2;
+  const cY = H / 2 - 30;
+
+  // Render Direction Indicator
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(cX, cY, 140, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Active Color indicator aura
+  ctx.fillStyle = COLOR_MAP[gameState.currentColor] || '#ffffff';
+  ctx.globalAlpha = 0.2;
+  ctx.beginPath();
+  ctx.arc(cX + 60, cY, 70, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1.0;
+
+  // Draw Pile (Back of Card)
+  const cardW = 90, cardH = 135;
+  const drawX = cX - 110, drawY = cY - cardH / 2;
+  drawPileRect = { x: drawX, y: drawY, w: cardW, h: cardH };
+
+  renderCardBack(drawX, drawY, cardW, cardH, `Draw (${gameState.drawPileCount})`);
+
+  // Discard Pile Top Card
+  const discardX = cX + 15, discardY = cY - cardH / 2;
+  if (gameState.topDiscard) {
+    renderCardFace(discardX, discardY, cardW, cardH, gameState.topDiscard, false);
+  }
+
+  // Draw UNO Shout Button
+  const unoW = 80, unoH = 80;
+  const unoX = cX + 130, unoY = cY - unoH / 2;
+  unoButtonRect = { x: unoX, y: unoY, w: unoW, h: unoH };
+
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath();
+  ctx.arc(unoX + unoW/2, unoY + unoH/2, unoW/2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 22px 'Segoe UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("UNO!", unoX + unoW/2, unoY + unoH/2 + 8);
+}
+
+function renderOpponents(W, H) {
+  const opponents = gameState.players.filter(p => p.id !== myId);
+  const total = opponents.length;
+  if (total === 0) return;
+
+  const startX = W / (total + 1);
+  opponents.forEach((p, i) => {
+    const x = startX * (i + 1);
+    const y = 90;
+
+    // Active Highlight box
+    if (p.isCurrent) {
+      ctx.fillStyle = "rgba(56, 189, 248, 0.2)";
+      roundRect(ctx, x - 70, y - 10, 140, 95, 8, true, false);
     }
 
-    class CardRulesEngine {
-      static parseCards(cardStrArray) {
-        if (!cardStrArray || cardStrArray.length === 0) return null;
-        const sorted = [...cardStrArray].sort((a, b) => getCardValue(a) - getCardValue(b));
-        const len = sorted.length;
-        const values = sorted.map(getCardValue);
-        
-        const freq = {};
-        values.forEach(v => freq[v] = (freq[v] || 0) + 1);
-        const keys = Object.keys(freq).map(Number).sort((a, b) => a - b);
-        const counts = Object.values(freq);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 16px 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(p.name, x, y + 12);
 
-        if (len === 2 && values[0] === 16 && values[1] === 17) return { type: 'KING_BOMB', value: 17, length: 2, name: '王炸' };
-        if (len === 1) return { type: 'SINGLE', value: values[0], length: 1, name: '单张' };
-        if (len === 2 && values[0] === values[1]) return { type: 'PAIR', value: values[0], length: 2, name: '对子' };
-        if (len === 3 && counts.length === 1) return { type: 'TRIPLE', value: values[0], length: 3, name: '三张' };
-        if (len === 4 && counts.includes(3) && counts.includes(1)) return { type: 'TRIPLE_ONE', value: keys.find(k => freq[k] === 3), length: 4, name: '三带一' };
-        if (len === 5 && counts.includes(3) && counts.includes(2)) return { type: 'TRIPLE_PAIR', value: keys.find(k => freq[k] === 3), length: 5, name: '三带二' };
-        if (len === 4 && counts.length === 1) return { type: 'BOMB', value: values[0], length: 4, name: '炸弹' };
-        if (len >= 5 && counts.every(c => c === 1) && values[len - 1] < 15 && (values[len - 1] - values[0] === len - 1)) {
-          return { type: 'STRAIGHT', value: values[len - 1], length: len, name: '顺子' };
-        }
-        if (len >= 6 && len % 2 === 0 && counts.every(c => c === 2) && values[len - 1] < 15) {
-          if (keys[keys.length - 1] - keys[0] === keys.length - 1) {
-            return { type: 'STRAIGHT_PAIR', value: keys[keys.length - 1], length: len, name: '连对' };
-          }
-        }
-        return null;
-      }
+    ctx.font = "14px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText(`Cards: ${p.cardCount} | Score: ${p.totalScore}`, x, y + 34);
 
-      static canBeat(myHand, lastHand) {
-        if (!lastHand) return true;
-
-        if (myHand.type === 'KING_BOMB') return true;
-        if (lastHand.type === 'KING_BOMB') return false;
-        if (myHand.type === 'BOMB' && lastHand.type !== 'BOMB') return true;
-        if (lastHand.type === 'BOMB' && myHand.type !== 'BOMB') return false;
-
-        if (myHand.type === lastHand.type && myHand.length === lastHand.length) {
-          return myHand.value > lastHand.value;
-        }
-
-        return false;
-      }
+    if (p.calledUno) {
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 14px 'Segoe UI', sans-serif";
+      ctx.fillText("📣 CALLED UNO!", x, y + 56);
     }
-
-    class LandlordGameApp {
-      constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.authMode = 'login';
-        this.isAIMode = false;
-        this.user = null;
-        
-        this.myHand = [];
-        this.aiHands = [[], []];
-        this.selectedIndices = new Set();
-        
-        this.tablePlayedHand = null; // 桌面渲染用 (绝不随 Pass 清空)
-        this.lastPlayedHand = null;  // 规则比牌判定用
-        this.isMyTurn = false;
-
-        this.initCanvasSize();
-        this.bindEvents();
-        requestAnimationFrame(() => this.renderLoop());
-      }
-
-      showToast(text) {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = 'toast-msg';
-        toast.innerText = text;
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-      }
-
-      initCanvasSize() {
-        const container = document.getElementById('game-container');
-        const dpr = window.devicePixelRatio || 1;
-        this.canvas.width = container.clientWidth * dpr;
-        this.canvas.height = container.clientHeight * dpr;
-        this.ctx.scale(dpr, dpr);
-        this.width = container.clientWidth;
-        this.height = container.clientHeight;
-      }
-
-      bindEvents() {
-        window.addEventListener('resize', () => this.initCanvasSize());
-        
-        const handleTouchOrClick = (e) => {
-          const rect = this.canvas.getBoundingClientRect();
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-          const clickX = clientX - rect.left;
-          const clickY = clientY - rect.top;
-
-          const isMobile = this.width < 600;
-          const cardW = isMobile ? Math.min(48, (this.width - 20) / (this.myHand.length || 1)) : Math.min(65, (this.width - 40) / (this.myHand.length || 1));
-          const cardH = isMobile ? 72 : 92;
-          const overlap = Math.min(isMobile ? 22 : 28, (this.width - 60) / (this.myHand.length || 1));
-          const startX = (this.width - (cardW + (this.myHand.length - 1) * overlap)) / 2;
-          const startY = this.height - cardH - (isMobile ? 12 : 20);
-
-          for (let i = this.myHand.length - 1; i >= 0; i--) {
-            const x = startX + i * overlap;
-            const hitW = (i === this.myHand.length - 1) ? cardW : overlap;
-            if (clickX >= x && clickX <= x + hitW && clickY >= startY - 25 && clickY <= startY + cardH) {
-              this.selectedIndices.has(i) ? this.selectedIndices.delete(i) : this.selectedIndices.add(i);
-              break;
-            }
-          }
-        };
-
-        this.canvas.addEventListener('touchstart', (e) => { handleTouchOrClick(e); e.preventDefault(); }, { passive: false });
-        this.canvas.addEventListener('click', handleTouchOrClick);
-      }
-
-      switchView(viewName) {
-        ['panel-lobby', 'panel-shop', 'panel-2fa'].forEach(id => document.getElementById(id).classList.add('hidden'));
-        ['nav-lobby', 'nav-shop', 'nav-2fa'].forEach(id => document.getElementById(id).classList.remove('active'));
-
-        document.getElementById(`panel-${viewName}`).classList.remove('hidden');
-        document.getElementById(`nav-${viewName}`).classList.add('active');
-
-        if (viewName === 'shop') this.loadShopItems();
-      }
-
-      switchAuthTab(tab) {
-        this.authMode = tab;
-        document.getElementById('tab-login').className = `auth-tab ${tab === 'login' ? 'active' : ''}`;
-        document.getElementById('tab-register').className = `auth-tab ${tab === 'register' ? 'active' : ''}`;
-      }
-
-      async handleAuth() {
-        const username = document.getElementById('auth-username').value.trim();
-        const password = document.getElementById('auth-password').value.trim();
-        const twoFAToken = document.getElementById('auth-2fa-input').value.trim();
-
-        if (!username || !password) return this.showToast('⚠️ 请输入账号和密码！');
-
-        const btn = document.getElementById('auth-submit-btn');
-        btn.disabled = true;
-        btn.innerText = "认证中...";
-
-        try {
-          const endpoint = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, twoFAToken })
-          });
-          const data = await res.json();
-
-          btn.disabled = false;
-          btn.innerText = this.authMode === 'login' ? '访问节点' : '注册账号';
-
-          if (data.require2FA) {
-            document.getElementById('auth-2fa-input').classList.remove('hidden');
-            this.showToast(data.message);
-            return;
-          }
-
-          if (data.success) {
-            if (this.authMode === 'register') {
-              this.showToast('✅ 注册成功！请登录');
-              this.switchAuthTab('login');
-            } else {
-              this.user = data.user;
-              this.updateUserUI();
-              document.getElementById('panel-auth').classList.add('hidden');
-              document.getElementById('main-sidebar').classList.remove('hidden');
-              this.switchView('lobby');
-
-              try {
-                if (typeof io !== 'undefined') {
-                  socket = io(window.location.origin);
-                  this.setupSocketListeners();
-                }
-              } catch (e) {}
-
-              this.showToast(`🎉 欢迎，${this.user.username}！`);
-            }
-          } else {
-            this.showToast('❌ ' + data.error);
-          }
-        } catch (err) {
-          btn.disabled = false;
-          btn.innerText = "访问节点";
-          this.showToast('❌ 响应异常，请重试！');
-        }
-      }
-
-      async generate2FA() {
-        const res = await fetch('/api/user/generate-2fa', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: this.user.username })
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('2fa-qr-img').src = data.qrCodeUrl;
-          document.getElementById('2fa-setup-box').classList.add('hidden');
-          document.getElementById('2fa-qr-box').classList.remove('hidden');
-        }
-      }
-
-      async verify2FA() {
-        const token = document.getElementById('verify-2fa-input').value.trim();
-        if (!token) return this.showToast('请输入 6 位验证码');
-
-        const res = await fetch('/api/user/verify-2fa', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: this.user.username, token })
-        });
-        const data = await res.json();
-        if (data.success) {
-          this.user = data.user;
-          this.showToast(data.message);
-          this.switchView('lobby');
-        } else {
-          this.showToast('❌ ' + data.error);
-        }
-      }
-
-      updateUserUI() {
-        document.getElementById('sidebar-username').innerText = this.user.username;
-        document.getElementById('sidebar-coins').innerText = this.user.coins;
-        document.getElementById('sidebar-avatar').innerText = this.user.avatar || '🤖';
-      }
-
-      async loadShopItems() {
-        const res = await fetch('/api/shop/items');
-        const data = await res.json();
-        if (data.success) {
-          const grid = document.getElementById('shop-grid');
-          grid.innerHTML = data.items.map(item => {
-            const owned = this.user.inventory.includes(item.itemId);
-            return `
-              <div class="shop-card">
-                <div style="font-size:28px;">${item.icon}</div>
-                <div style="color:#fff; font-size:11px; font-weight:bold;">${item.name}</div>
-                <div style="color:var(--cyber-yellow); font-size:11px; margin:2px 0;">🪙 ${item.price}</div>
-                <button class="btn btn-gold" style="font-size:10px; padding:4px 8px;" 
-                  ${owned ? 'disabled' : ''} onclick="gameApp.buyItem('${item.itemId}')">
-                  ${owned ? '已装备' : '购买'}
-                </button>
-              </div>
-            `;
-          }).join('');
-        }
-      }
-
-      async buyItem(itemId) {
-        const res = await fetch('/api/shop/buy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: this.user.username, itemId })
-        });
-        const data = await res.json();
-        if (data.success) {
-          this.user = data.user;
-          this.updateUserUI();
-          this.showToast(data.message);
-          this.loadShopItems();
-        } else {
-          this.showToast('❌ ' + data.error);
-        }
-      }
-
-      setupSocketListeners() {
-        if (!socket) return;
-        socket.on('room_created', ({ room }) => this.roomId = room.id);
-        socket.on('game_start', ({ message, currentTurnSocketId, room }) => {
-          this.showToast(message);
-          document.getElementById('panel-lobby').classList.add('hidden');
-          document.getElementById('main-sidebar').classList.add('hidden');
-          document.getElementById('action-bar').classList.remove('hidden');
-          document.getElementById('turn-tip').classList.remove('hidden');
-          
-          this.dealCards(room.maxPlayers);
-          this.updateTurnState(currentTurnSocketId, '');
-        });
-
-        socket.on('turn_changed', ({ currentTurnSocketId, username, lastPlayedHand }) => {
-          this.updateTurnState(currentTurnSocketId, username, lastPlayedHand);
-        });
-
-        // 🔥【核心修复点 1】：只更新打牌数据，绝对不把桌面牌表置空！
-        socket.on('cards_played', (data) => {
-          if (data.rawCards && Array.isArray(data.rawCards) && data.rawCards.length > 0) {
-            this.tablePlayedHand = {
-              username: data.username || '玩家',
-              rawCards: [...data.rawCards]
-            };
-          }
-        });
-
-        socket.on('error_message', (msg) => this.showToast('⚠️ ' + msg));
-      }
-
-      updateTurnState(currentTurnSocketId, currentTurnUsername, lastPlayedHand) {
-        this.isMyTurn = socket ? (socket.id === currentTurnSocketId) : true;
-
-        const isTableCleared = !lastPlayedHand || (lastPlayedHand && socket && lastPlayedHand.playerId === socket.id);
-
-        if (isTableCleared) {
-          this.lastPlayedHand = null;
-        } else {
-          this.lastPlayedHand = lastPlayedHand;
-        }
-
-        document.getElementById('btn-play').disabled = !this.isMyTurn;
-        document.getElementById('btn-pass').disabled = !this.isMyTurn;
-
-        const turnTip = document.getElementById('turn-tip');
-        if (this.isMyTurn) {
-          turnTip.innerText = (this.lastPlayedHand === null) ? "👉 桌面已清空！你拥有自由领头权！" : "👉 轮到你的回合，请选择压牌或 PASS！";
-        } else {
-          turnTip.innerText = `⏳ 对方【${currentTurnUsername || '对手'}】思考中...`;
-        }
-      }
-
-      createRoom() {
-        const mode = document.getElementById('room-mode-select').value;
-        const roomId = document.getElementById('room-input').value.trim();
-
-        if (mode === 'AI') return this.startAIGame();
-        if (!roomId) return this.showToast('请输入房间号！');
-        if (socket) socket.emit('create_room', { roomId, username: this.user.username, mode });
-      }
-
-      joinRoom() {
-        const mode = document.getElementById('room-mode-select').value;
-        if (mode === 'AI') return this.startAIGame();
-
-        const roomId = document.getElementById('room-input').value.trim();
-        if (!roomId) return this.showToast('请输入房间号！');
-        if (socket) socket.emit('join_room', { roomId, username: this.user.username });
-      }
-
-      startAIGame() {
-        this.isAIMode = true;
-        this.showToast('🤖 已进入单人 AI 练习对战！');
-        document.getElementById('panel-lobby').classList.add('hidden');
-        document.getElementById('main-sidebar').classList.add('hidden');
-        document.getElementById('action-bar').classList.remove('hidden');
-        document.getElementById('turn-tip').classList.remove('hidden');
-
-        const suits = ['♠', '♥', '♣', '♦'];
-        const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
-        const deck = [];
-        ranks.forEach(r => suits.forEach(s => deck.push(s + r)));
-        deck.push('小王', '大王');
-
-        for (let i = deck.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [deck[i], deck[j]] = [deck[j], deck[i]];
-        }
-
-        this.myHand = deck.slice(0, 17).sort((a, b) => getCardValue(b) - getCardValue(a));
-        this.aiHands[0] = deck.slice(17, 34).sort((a, b) => getCardValue(b) - getCardValue(a));
-        this.aiHands[1] = deck.slice(34, 51).sort((a, b) => getCardValue(b) - getCardValue(a));
-
-        this.isMyTurn = true;
-        this.lastPlayedHand = null;
-        this.tablePlayedHand = null;
-        document.getElementById('btn-play').disabled = false;
-        document.getElementById('btn-pass').disabled = false;
-        document.getElementById('turn-tip').innerText = "👉 桌面已清空，你拥有自由出牌权！";
-      }
-
-      triggerAITurn(aiIndex) {
-        setTimeout(() => {
-          const hand = this.aiHands[aiIndex];
-          const currentAiId = 'ai_' + aiIndex;
-          const name = `AI 玩家 ${aiIndex + 1}`;
-
-          const isAiLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === currentAiId);
-
-          if (isAiLeading) {
-            const playCard = hand.pop();
-            const handInfo = { type: 'SINGLE', value: getCardValue(playCard), length: 1, rawCards: [playCard], playerId: currentAiId };
-            this.lastPlayedHand = handInfo;
-            this.tablePlayedHand = { username: name, rawCards: [playCard] };
-          } else {
-            const validCardIndex = hand.findIndex(c => getCardValue(c) > this.lastPlayedHand.value);
-            if (validCardIndex !== -1 && (this.lastPlayedHand.type === 'SINGLE')) {
-              const playCard = hand.splice(validCardIndex, 1)[0];
-              const handInfo = { type: 'SINGLE', value: getCardValue(playCard), length: 1, rawCards: [playCard], playerId: currentAiId };
-              this.lastPlayedHand = handInfo;
-              this.tablePlayedHand = { username: name, rawCards: [playCard] };
-            } else {
-              this.showToast(`${name}: PASS`);
-            }
-          }
-
-          if (hand.length === 0) {
-            this.showToast(`💔 ${name} 率先出完手牌获胜！`);
-            setTimeout(() => window.location.reload(), 2500);
-            return;
-          }
-
-          if (aiIndex === 0) {
-            this.triggerAITurn(1);
-          } else {
-            this.isMyTurn = true;
-            document.getElementById('btn-play').disabled = false;
-            document.getElementById('btn-pass').disabled = false;
-            
-            // 🔥【核心修复点 2】：全员 Pass 时只把规则判定 lastPlayedHand 重置为 null，绝不清空 tablePlayedHand 桌面画牌！
-            const isUserLeading = !this.lastPlayedHand || (this.lastPlayedHand && this.lastPlayedHand.playerId === 'me');
-            if (isUserLeading) {
-              this.lastPlayedHand = null;
-            }
-
-            document.getElementById('turn-tip').innerText = (this.lastPlayedHand === null) ? "👉 所有人 PASS，你获得自由出牌权！" : "👉 轮到你选择压牌或 PASS！";
-          }
-        }, 1000);
-      }
-
-      dealCards(maxPlayers) {
-        const suits = ['♠', '♥', '♣', '♦'];
-        const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
-        const deckCount = (maxPlayers === 5) ? 2 : 1;
-        const deck = [];
-
-        for (let d = 0; d < deckCount; d++) {
-          ranks.forEach(r => suits.forEach(s => deck.push(s + r)));
-          deck.push('小王', '大王');
-        }
-
-        for (let i = deck.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [deck[i], deck[j]] = [deck[j], deck[i]];
-        }
-
-        const handCount = (maxPlayers === 5) ? 20 : 17;
-        this.myHand = deck.slice(0, handCount).sort((a,b) => getCardValue(b) - getCardValue(a));
-      }
-
-      sortHand() { this.myHand.sort((a,b) => getCardValue(b) - getCardValue(a)); this.selectedIndices.clear(); }
-
-      playCards() {
-        if (this.selectedIndices.size === 0) return this.showToast('请先选择要出的手牌！');
-        
-        const sortedIndices = Array.from(this.selectedIndices).sort((a, b) => b - a);
-        const selectedCards = sortedIndices.map(i => this.myHand[i]);
-
-        const handInfo = CardRulesEngine.parseCards(selectedCards);
-        
-        if (!handInfo) return this.showToast('非法的出牌组合！');
-
-        if (!CardRulesEngine.canBeat(handInfo, this.lastPlayedHand)) {
-          return this.showToast(`出的牌无法压过上家！必须出同牌型更大值的牌。`);
-        }
-
-        handInfo.rawCards = selectedCards;
-
-        // 本地切牌
-        sortedIndices.forEach(index => {
-          this.myHand.splice(index, 1);
-        });
-
-        this.selectedIndices.clear();
-
-        // 🔥【核心修复点 3】：出牌立即更新桌面渲染牌，不给网络延迟或被删留下任何缝隙
-        this.tablePlayedHand = { username: this.user.username, rawCards: handInfo.rawCards };
-
-        if (this.isAIMode) {
-          handInfo.playerId = 'me';
-          this.lastPlayedHand = handInfo;
-
-          if (this.myHand.length === 0) {
-            this.showToast('🎉 恭喜你击败 AI 率先出完手牌！获得胜利！');
-            setTimeout(() => window.location.reload(), 2500);
-            return;
-          }
-
-          this.isMyTurn = false;
-          document.getElementById('btn-play').disabled = true;
-          document.getElementById('btn-pass').disabled = true;
-          document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
-          this.triggerAITurn(0);
-        } else {
-          socket.emit('play_cards', { roomId: this.roomId, handInfo });
-          if (this.myHand.length === 0) socket.emit('game_over', { roomId: this.roomId, winnerUsername: this.user.username });
-        }
-      }
-
-      passTurn() {
-        this.selectedIndices.clear();
-
-        if (this.lastPlayedHand === null) {
-          return this.showToast('⚠️ 当前桌面无牌（你是首发领头），不能 PASS！请选择手牌打出。');
-        }
-
-        this.showToast('你选择了：PASS / 不出');
-
-        if (this.isAIMode) {
-          this.isMyTurn = false;
-          document.getElementById('btn-play').disabled = true;
-          document.getElementById('btn-pass').disabled = true;
-          document.getElementById('turn-tip').innerText = "⏳ AI 正在思考中...";
-          this.triggerAITurn(0);
-        } else {
-          socket.emit('pass_turn', { roomId: this.roomId });
-        }
-      }
-
-      drawVectorSuit(suitType, cx, cy, size, color) {
-        this.ctx.save();
-        this.ctx.fillStyle = color;
-        this.ctx.beginPath();
-
-        if (suitType === '♥') {
-          const topCurveHeight = size * 0.3;
-          this.ctx.moveTo(cx, cy + size * 0.35);
-          this.ctx.bezierCurveTo(cx - size * 0.5, cy, cx - size * 0.5, cy - topCurveHeight, cx, cy - size * 0.1);
-          this.ctx.bezierCurveTo(cx + size * 0.5, cy - topCurveHeight, cx + size * 0.5, cy, cx, cy + size * 0.35);
-        } else if (suitType === '♦') {
-          this.ctx.moveTo(cx, cy - size * 0.4);
-          this.ctx.lineTo(cx + size * 0.35, cy);
-          this.ctx.lineTo(cx, cy + size * 0.4);
-          this.ctx.lineTo(cx - size * 0.35, cy);
-        } else if (suitType === '♠') {
-          this.ctx.moveTo(cx, cy - size * 0.35);
-          this.ctx.bezierCurveTo(cx + size * 0.45, cy - size * 0.1, cx + size * 0.4, cy + size * 0.25, cx, cy + size * 0.15);
-          this.ctx.bezierCurveTo(cx - size * 0.4, cy + size * 0.25, cx - size * 0.45, cy - size * 0.1, cx, cy - size * 0.35);
-          this.ctx.fill();
-          this.ctx.beginPath();
-          this.ctx.moveTo(cx, cy + size * 0.1);
-          this.ctx.lineTo(cx - size * 0.18, cy + size * 0.4);
-          this.ctx.lineTo(cx + size * 0.18, cy + size * 0.4);
-        } else if (suitType === '♣') {
-          const r = size * 0.2;
-          this.ctx.arc(cx, cy - size * 0.15, r, 0, Math.PI * 2);
-          this.ctx.arc(cx - size * 0.18, cy + size * 0.08, r, 0, Math.PI * 2);
-          this.ctx.arc(cx + size * 0.18, cy + size * 0.08, r, 0, Math.PI * 2);
-          this.ctx.fill();
-          this.ctx.beginPath();
-          this.ctx.moveTo(cx, cy + size * 0.05);
-          this.ctx.lineTo(cx - size * 0.15, cy + size * 0.4);
-          this.ctx.lineTo(cx + size * 0.15, cy + size * 0.4);
-        }
-
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.restore();
-      }
-
-      drawCardGraphic(cardStr, x, y, cardW, cardH, isSelected = false) {
-        if (!cardStr) return;
-
-        this.ctx.save();
-
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.beginPath();
-        this.ctx.roundRect(x, y, cardW, cardH, 6);
-        this.ctx.fill();
-
-        this.ctx.lineWidth = isSelected ? 3 : 1.5;
-        this.ctx.strokeStyle = isSelected ? '#ff007f' : '#2c3e50';
-        if (isSelected) {
-          this.ctx.shadowColor = '#ff007f';
-          this.ctx.shadowBlur = 12;
-        }
-        this.ctx.stroke();
-
-        const isRed = cardStr.includes('♥') || cardStr.includes('♦') || cardStr === '大王';
-        const color = isRed ? '#e74c3c' : '#1a252f';
-        const isMobile = this.width < 600;
-
-        if (cardStr === '大王' || cardStr === '小王') {
-          this.ctx.fillStyle = color;
-          this.ctx.font = `900 ${isMobile ? 12 : 14}px sans-serif`;
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText(cardStr, x + cardW / 2, y + cardH / 2 + (isMobile ? 4 : 5));
-        } else {
-          const suit = cardStr.charAt(0);
-          const rank = cardStr.slice(1);
-
-          this.ctx.fillStyle = color;
-          this.ctx.font = `900 ${isMobile ? 13 : 16}px Arial, sans-serif`;
-          this.ctx.textAlign = 'left';
-          this.ctx.fillText(rank, x + (isMobile ? 4 : 6), y + (isMobile ? 15 : 18));
-
-          const suitSize = isMobile ? 22 : 28;
-          this.drawVectorSuit(suit, x + cardW / 2, y + cardH / 2 + (isMobile ? 4 : 6), suitSize, color);
-        }
-
-        this.ctx.restore();
-      }
-
-      renderLoop() {
-        this.ctx.clearRect(0, 0, this.width, this.height);
-
-        const isMobile = this.width < 600;
-
-        this.ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
-        this.ctx.font = `900 ${isMobile ? 22 : 36}px "Courier New"`;
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('CYBERPUNK LANDLORD', this.width / 2, this.height / 2 - 80);
-
-        // 防御性安全渲染牌桌打出的牌（绝对常驻，绝不消失）
-        if (this.tablePlayedHand && Array.isArray(this.tablePlayedHand.rawCards) && this.tablePlayedHand.rawCards.length > 0) {
-          const cards = this.tablePlayedHand.rawCards;
-          const total = cards.length;
-          const cardW = isMobile ? 36 : 48;
-          const cardH = isMobile ? 54 : 70;
-          const overlap = isMobile ? 16 : 22;
-          const startX = (this.width - (cardW + (total - 1) * overlap)) / 2;
-          const startY = this.height / 2 - (isMobile ? 30 : 45);
-
-          this.ctx.fillStyle = '#facc15';
-          this.ctx.font = `bold ${isMobile ? 11 : 13}px sans-serif`;
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText(`【${this.tablePlayedHand.username || '玩家'}】 打出：`, this.width / 2, startY - 10);
-
-          cards.forEach((cardStr, i) => {
-            const x = startX + i * overlap;
-            this.drawCardGraphic(cardStr, x, startY, cardW, cardH, false);
-          });
-        }
-
-        // 渲染底部手牌
-        if (Array.isArray(this.myHand) && this.myHand.length > 0) {
-          const total = this.myHand.length;
-          const cardW = isMobile ? Math.min(48, (this.width - 20) / total) : Math.min(65, (this.width - 40) / total);
-          const cardH = isMobile ? 72 : 92;
-          const overlap = Math.min(isMobile ? 22 : 28, (this.width - 60) / total);
-          const startX = (this.width - (cardW + (total - 1) * overlap)) / 2;
-          const startY = this.height - cardH - (isMobile ? 12 : 20);
-
-          this.myHand.forEach((cardStr, i) => {
-            const x = startX + i * overlap;
-            const isSelected = this.selectedIndices.has(i);
-            const drawY = isSelected ? startY - (isMobile ? 12 : 18) : startY;
-
-            this.drawCardGraphic(cardStr, x, drawY, cardW, cardH, isSelected);
-          });
-        }
-
-        requestAnimationFrame(() => this.renderLoop());
+  });
+}
+
+function renderMyHand(W, H) {
+  const hand = gameState.myHand;
+  if (!hand) return;
+
+  const cardW = 100, cardH = 150;
+  const spacing = Math.min(cardW + 10, (W - 200) / Math.max(hand.length, 1));
+  const totalWidth = (hand.length - 1) * spacing + cardW;
+  const startX = (W - totalWidth) / 2;
+  const startY = H - cardH - 30;
+
+  hand.forEach((card, idx) => {
+    const x = startX + idx * spacing;
+    const y = startY;
+    
+    // Check match playability for glow effect
+    const curPlayer = gameState.players[gameState.currentTurnIndex];
+    const isMyTurn = curPlayer?.id === myId;
+    let isPlayable = false;
+    
+    if (isMyTurn) {
+      if (card.color === 'Wild' || card.color === gameState.currentColor || card.value === gameState.activeValue) {
+        isPlayable = true;
       }
     }
 
-    let gameApp;
-    window.addEventListener('DOMContentLoaded', () => { gameApp = new LandlordGameApp(); });
-  </script>
+    cardRects.push({ x, y, w: cardW, h: cardH, card, isPlayable });
+    renderCardFace(x, y - (isPlayable ? 15 : 0), cardW, cardH, card, isPlayable);
+  });
+}
+
+function renderCardFace(x, y, w, h, card, highlight) {
+  // Glow outline if playable
+  if (highlight) {
+    ctx.shadowColor = "#f59e0b";
+    ctx.shadowBlur = 12;
+  }
+
+  // Outer border & fill
+  ctx.fillStyle = COLOR_MAP[card.color] || '#334155';
+  roundRect(ctx, x, y, w, h, 10, true, true);
+  ctx.shadowBlur = 0; // reset shadow
+
+  // Inner oval frame
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h/2, w/2.6, h/2.4, Math.PI / 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Text / Symbol
+  ctx.fillStyle = COLOR_MAP[card.color] === '#eab308' ? '#000000' : (card.color === 'Wild' ? '#8b5cf6' : COLOR_MAP[card.color]);
+  ctx.font = "bold 26px 'Segoe UI', sans-serif";
+  ctx.textAlign = "center";
+  
+  let displayText = card.value;
+  if (card.value === 'Draw2') displayText = '+2';
+  if (card.value === 'Wild4') displayText = '+4';
+  if (card.value === 'Skip') displayText = '🚫';
+  if (card.value === 'Reverse') displayText = '🔄';
+
+  ctx.fillText(displayText, x + w/2, y + h/2 + 9);
+}
+
+function renderCardBack(x, y, w, h, label) {
+  ctx.fillStyle = "#1e293b";
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, w, h, 10, true, true);
+
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h/2, w/2.8, h/2.4, Math.PI / 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 14px 'Segoe UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(label, x + w/2, y + h/2 + 5);
+}
+
+function renderLogs(W, H) {
+  const logX = 20, logY = H - 180;
+  ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
+  roundRect(ctx, logX, logY, 300, 160, 8, true, false);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "bold 12px 'Segoe UI', sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("GAME LOGS", logX + 10, logY + 20);
+
+  ctx.font = "11px 'Segoe UI', sans-serif";
+  ctx.fillStyle = "#cbd5e1";
+  const logs = gameState.logs || [];
+  const displayLogs = logs.slice(-7);
+  displayLogs.forEach((l, idx) => {
+    ctx.fillText(l, logX + 10, logY + 38 + (idx * 17));
+  });
+}
+
+function roundRect(ctx, x, y, w, h, radius, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+// ==========================================
+// USER INTERACTION CANVAS EVENTS
+// ==========================================
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
+
+  if (!gameState) return;
+
+  // Lobby start click
+  if (!gameState.gameStarted && startButtonRect) {
+    if (clickX >= startButtonRect.x && clickX <= startButtonRect.x + startButtonRect.w &&
+        clickY >= startButtonRect.y && clickY <= startButtonRect.y + startButtonRect.h) {
+      socket.emit('startGame');
+      return;
+    }
+  }
+
+  // Draw card click
+  if (drawPileRect && clickX >= drawPileRect.x && clickX <= drawPileRect.x + drawPileRect.w &&
+      clickY >= drawPileRect.y && clickY <= drawPileRect.y + drawPileRect.h) {
+    socket.emit('drawCard');
+    return;
+  }
+
+  // Shout UNO click
+  if (unoButtonRect) {
+    const dist = Math.hypot(clickX - (unoButtonRect.x + unoButtonRect.w/2), clickY - (unoButtonRect.y + unoButtonRect.h/2));
+    if (dist <= unoButtonRect.w / 2) {
+      socket.emit('callUno');
+      return;
+    }
+  }
+
+  // Card Hand selection click
+  for (let i = cardRects.length - 1; i >= 0; i--) {
+    const r = cardRects[i];
+    if (clickX >= r.x && clickX <= r.x + r.w && clickY >= r.y && clickY <= r.y + r.h) {
+      if (r.card.color === 'Wild') {
+        pendingWildCardId = r.card.id;
+        document.getElementById('colorModal').style.display = 'flex';
+      } else {
+        socket.emit('playCard', { cardId: r.card.id });
+      }
+      break;
+    }
+  }
+});
+</script>
 </body>
 </html>
+
