@@ -9,7 +9,7 @@ const path = require('path');
 // CONFIGURATION & MONGO DB SETUP
 // ==========================================
 // Replace this with your actual MongoDB URI string if not using environment variables:
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/unogame";
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://buenosairesampy563_db_user:congcong2012@cluster0.aaks5du.mongodb.net/?appName=Cluster0";
 
 const app = express();
 app.use(cors());
