@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>UNO Arena - Fixed Responsive Canvas</title>
+  <title>UNO Master - Pro Canvas Edition</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
     body, html { 
-      width: 100%; height: 100%; overflow: hidden; background: #0f172a; 
+      width: 100%; height: 100%; overflow: hidden; background: #0b0f19; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       touch-action: none; overscroll-behavior: none;
     }
@@ -16,27 +16,32 @@
     
     .modal-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.8); display: none;
+      background: rgba(5, 10, 20, 0.85); backdrop-filter: blur(8px); display: none;
       align-items: center; justify-content: center; z-index: 100;
     }
     .modal-box {
-      background: #1e293b; border: 2px solid #38bdf8; border-radius: 16px;
-      padding: 24px; text-align: center; color: white; width: 320px; max-width: 90vw;
+      background: #1e293b; border: 2px solid #38bdf8; border-radius: 20px;
+      padding: 24px; text-align: center; color: white; width: 340px; max-width: 90vw;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
     }
-    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
     .color-btn {
-      height: 60px; border-radius: 12px; border: none; font-weight: bold;
-      font-size: 18px; color: white; cursor: pointer;
+      height: 65px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.3); font-weight: 800;
+      font-size: 18px; color: white; cursor: pointer; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      transition: transform 0.15s ease;
     }
-    .bg-Red { background: #ef4444; } .bg-Yellow { background: #eab308; color: #000; }
-    .bg-Green { background: #22c55e; } .bg-Blue { background: #3b82f6; }
+    .color-btn:active { transform: scale(0.95); }
+    .bg-Red { background: linear-gradient(135deg, #ef4444, #dc2626); } 
+    .bg-Yellow { background: linear-gradient(135deg, #facc15, #ca8a04); color: #000; text-shadow: none; }
+    .bg-Green { background: linear-gradient(135deg, #22c55e, #16a34a); } 
+    .bg-Blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 
     .btn-action {
-      padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold;
-      font-size: 16px; cursor: pointer; color: white;
+      padding: 12px 24px; border-radius: 12px; border: none; font-weight: bold;
+      font-size: 15px; cursor: pointer; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    .btn-accept { background: #22c55e; }
-    .btn-challenge { background: #ef4444; }
+    .btn-accept { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .btn-challenge { background: linear-gradient(135deg, #ef4444, #dc2626); }
   </style>
   <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -47,22 +52,24 @@
 
   <div id="colorModal" class="modal-overlay">
     <div class="modal-box">
-      <h3>Select Active Wild Color</h3>
+      <h3 style="font-size: 22px; letter-spacing: 0.5px;">SELECT WILD COLOR</h3>
       <div class="modal-grid">
-        <button class="color-btn bg-Red" onclick="selectWildColor('Red')">Red</button>
-        <button class="color-btn bg-Yellow" onclick="selectWildColor('Yellow')">Yellow</button>
-        <button class="color-btn bg-Green" onclick="selectWildColor('Green')">Green</button>
-        <button class="color-btn bg-Blue" onclick="selectWildColor('Blue')">Blue</button>
+        <button class="color-btn bg-Red" onclick="selectWildColor('Red')">RED</button>
+        <button class="color-btn bg-Yellow" onclick="selectWildColor('Yellow')">YELLOW</button>
+        <button class="color-btn bg-Green" onclick="selectWildColor('Green')">GREEN</button>
+        <button class="color-btn bg-Blue" onclick="selectWildColor('Blue')">BLUE</button>
       </div>
     </div>
   </div>
 
   <div id="challengeModal" class="modal-overlay">
     <div class="modal-box">
-      <h3 id="challengeTitle">Wild +4 Played!</h3>
-      <p style="margin: 12px 0; font-size: 14px; color: #cbd5e1;">Do you want to challenge if they had a matching color in hand?</p>
+      <h3 id="challengeTitle" style="color: #f43f5e; font-size: 20px;">Wild +4 Played!</h3>
+      <p style="margin: 14px 0; font-size: 14px; color: #cbd5e1; line-height: 1.4;">
+        Challenge them if you suspect they have a card matching the active color in hand!
+      </p>
       <div style="display:flex; gap: 12px; justify-content: center;">
-        <button class="btn-action btn-accept" onclick="respondChallenge(false)">Accept (+4)</button>
+        <button class="btn-action btn-accept" onclick="respondChallenge(false)">Accept (+4 Cards)</button>
         <button class="btn-action btn-challenge" onclick="respondChallenge(true)">Challenge!</button>
       </div>
     </div>
@@ -83,15 +90,14 @@ let drawPileRect = null;
 let unoButtonRect = null;
 let startButtonRect = null;
 
-const COLOR_MAP = {
-  'Red': '#ef4444',
-  'Yellow': '#eab308',
-  'Green': '#22c55e',
-  'Blue': '#3b82f6',
-  'Wild': '#8b5cf6'
+const PALETTE = {
+  Red: { main: '#dc2626', gradient: ['#f87171', '#dc2626', '#991b1b'], text: '#ffffff' },
+  Yellow: { main: '#eab308', gradient: ['#fef08a', '#eab308', '#a16207'], text: '#1e293b' },
+  Green: { main: '#16a34a', gradient: ['#4ade80', '#16a34a', '#14532d'], text: '#ffffff' },
+  Blue: { main: '#2563eb', gradient: ['#60a5fa', '#2563eb', '#1e40af'], text: '#ffffff' },
+  Wild: { main: '#0f172a', gradient: ['#38bdf8', '#8b5cf6', '#ec4899'], text: '#ffffff' }
 };
 
-// Fix HDPI canvas scaling (Retina screens / Mobile display density)
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = window.innerWidth * dpr;
@@ -103,8 +109,8 @@ window.addEventListener('resize', resizeCanvas);
 
 socket.on('joined', (data) => {
   myId = data.id;
-  const playerName = prompt("Enter your Player Name:", "Player " + Math.floor(Math.random() * 900 + 100));
-  socket.emit('joinGame', playerName || "Anonymous");
+  const name = prompt("Enter Player Name:", "Player " + Math.floor(Math.random() * 899 + 100));
+  socket.emit('joinGame', name || "Player");
 });
 
 socket.on('gameState', (state) => {
@@ -115,12 +121,12 @@ socket.on('gameState', (state) => {
 
 function checkModals() {
   if (!gameState) return;
-  const challengeModal = document.getElementById('challengeModal');
+  const modal = document.getElementById('challengeModal');
   if (gameState.pendingChallenge && gameState.pendingChallenge.victimId === myId) {
     document.getElementById('challengeTitle').innerText = `${gameState.pendingChallenge.blufferName} played Wild +4!`;
-    challengeModal.style.display = 'flex';
+    modal.style.display = 'flex';
   } else {
-    challengeModal.style.display = 'none';
+    modal.style.display = 'none';
   }
 }
 
@@ -138,7 +144,7 @@ function respondChallenge(doChallenge) {
 }
 
 // ==========================================
-// RENDER ENGINE (Uses CSS Viewport Units)
+// RENDERING SYSTEM
 // ==========================================
 function render() {
   const W = window.innerWidth;
@@ -146,11 +152,11 @@ function render() {
 
   ctx.clearRect(0, 0, W, H);
 
-  // Background
-  const bgGradient = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, Math.max(W, H));
-  bgGradient.addColorStop(0, '#1e293b');
-  bgGradient.addColorStop(1, '#0f172a');
-  ctx.fillStyle = bgGradient;
+  // Casino Felt Radial Background
+  const bgGrad = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, Math.max(W, H)*0.7);
+  bgGrad.addColorStop(0, '#1e293b');
+  bgGrad.addColorStop(1, '#070a12');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
   if (!gameState) return;
@@ -174,171 +180,239 @@ function render() {
 
 function renderLobby(W, H) {
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 32px sans-serif";
+  ctx.font = "900 36px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("UNO ARENA LOBBY", W / 2, H / 2 - 120);
+  ctx.shadowColor = "rgba(56, 189, 248, 0.5)";
+  ctx.shadowBlur = 15;
+  ctx.fillText("UNO ARENA", W / 2, H / 2 - 130);
+  ctx.shadowBlur = 0;
 
-  ctx.font = "18px sans-serif";
+  ctx.font = "16px sans-serif";
   ctx.fillStyle = "#94a3b8";
-  ctx.fillText(`Connected Players (${gameState.players.length}):`, W / 2, H / 2 - 60);
+  ctx.fillText(`PLAYERS IN LOBBY (${gameState.players.length}/4)`, W / 2, H / 2 - 70);
 
   gameState.players.forEach((p, idx) => {
     ctx.fillStyle = p.id === myId ? "#38bdf8" : "#ffffff";
-    ctx.font = "18px sans-serif";
-    ctx.fillText(`${idx + 1}. ${p.name} ${p.id === myId ? '(You)' : ''}`, W / 2, H / 2 - 20 + (idx * 30));
+    ctx.font = "600 18px sans-serif";
+    ctx.fillText(`${p.name} ${p.id === myId ? '(YOU)' : ''}`, W / 2, H / 2 - 30 + (idx * 32));
   });
 
   if (gameState.players.length >= 2) {
-    const btnW = 240, btnH = 60;
+    const btnW = 220, btnH = 55;
     const btnX = W / 2 - btnW / 2;
     const btnY = H / 2 + 100;
     startButtonRect = { x: btnX, y: btnY, w: btnW, h: btnH };
 
     ctx.fillStyle = "#22c55e";
-    roundRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
+    roundRect(ctx, btnX, btnY, btnW, btnH, 14, true, false);
+
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 22px sans-serif";
-    ctx.fillText("START GAME", W / 2, btnY + 38);
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText("START GAME", W / 2, btnY + 35);
   } else {
     ctx.fillStyle = "#f59e0b";
-    ctx.font = "italic 16px sans-serif";
-    ctx.fillText("Waiting for at least 2 players to join...", W / 2, H / 2 + 120);
+    ctx.font = "italic 15px sans-serif";
+    ctx.fillText("Need at least 2 players to start...", W / 2, H / 2 + 120);
   }
 }
 
 function renderHeader(W, H) {
-  ctx.fillStyle = "#1e293b";
+  ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
   ctx.fillRect(0, 0, W, 50);
-  ctx.fillStyle = "#38bdf8";
-  ctx.font = "bold 18px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("UNO Arena", 15, 32);
 
   const curPlayer = gameState.players[gameState.currentTurnIndex];
   const isMyTurn = curPlayer?.id === myId;
-  ctx.fillStyle = isMyTurn ? "#22c55e" : "#ffffff";
+
+  ctx.fillStyle = isMyTurn ? "#4ade80" : "#ffffff";
   ctx.font = "bold 16px sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(`Turn: ${curPlayer ? curPlayer.name : ''} ${isMyTurn ? '(YOUR TURN)' : ''}`, W - 15, 32);
+  ctx.textAlign = "center";
+  ctx.fillText(isMyTurn ? "👉 YOUR TURN!" : `Turn: ${curPlayer ? curPlayer.name : ''}`, W / 2, 32);
 }
 
 function renderTableCenter(W, H) {
   const cX = W / 2;
   const cY = H / 2 - 20;
 
-  ctx.fillStyle = COLOR_MAP[gameState.currentColor] || '#ffffff';
-  ctx.globalAlpha = 0.25;
+  // Active Color Aura Ring
+  const activeCol = PALETTE[gameState.currentColor]?.main || '#ffffff';
+  ctx.strokeStyle = activeCol;
+  ctx.lineWidth = 6;
+  ctx.shadowColor = activeCol;
+  ctx.shadowBlur = 20;
   ctx.beginPath();
-  ctx.arc(cX, cY, 80, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1.0;
+  ctx.arc(cX, cY, 100, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
 
-  const cardW = 80, cardH = 120;
-  const drawX = cX - 95, drawY = cY - cardH / 2;
+  const cardW = 90, cardH = 135;
+  const drawX = cX - 110, drawY = cY - cardH / 2;
   drawPileRect = { x: drawX, y: drawY, w: cardW, h: cardH };
-  renderCardBack(drawX, drawY, cardW, cardH, `Draw (${gameState.drawPileCount})`);
+  renderCardBack(drawX, drawY, cardW, cardH, `DRAW (${gameState.drawPileCount})`);
 
-  const discardX = cX + 15, discardY = cY - cardH / 2;
+  const discardX = cX + 20, discardY = cY - cardH / 2;
   if (gameState.topDiscard) {
     renderCardFace(discardX, discardY, cardW, cardH, gameState.topDiscard, false);
   }
 
-  const unoW = 70, unoH = 70;
-  const unoX = cX + 110, unoY = cY - unoH / 2;
-  unoButtonRect = { x: unoX, y: unoY, w: unoW, h: unoH };
+  // Shout UNO Button
+  const unoSize = 70;
+  const unoX = cX + 130, unoY = cY - unoSize / 2;
+  unoButtonRect = { x: unoX, y: unoY, w: unoSize, h: unoSize };
 
-  ctx.fillStyle = "#ef4444";
+  const unoGrad = ctx.createRadialGradient(unoX + unoSize/2, unoY + unoSize/2, 5, unoX + unoSize/2, unoY + unoSize/2, unoSize/2);
+  unoGrad.addColorStop(0, '#f43f5e');
+  unoGrad.addColorStop(1, '#be123c');
+  ctx.fillStyle = unoGrad;
   ctx.beginPath();
-  ctx.arc(unoX + unoW/2, unoY + unoH/2, unoW/2, 0, Math.PI * 2);
+  ctx.arc(unoX + unoSize/2, unoY + unoSize/2, unoSize/2, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 18px sans-serif";
+  ctx.font = "900 18px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("UNO!", unoX + unoW/2, unoY + unoH/2 + 6);
+  ctx.fillText("UNO!", unoX + unoSize/2, unoY + unoSize/2 + 6);
 }
 
 function renderOpponents(W, H) {
   const opponents = gameState.players.filter(p => p.id !== myId);
-  const total = opponents.length;
-  if (total === 0) return;
+  const count = opponents.length;
+  if (count === 0) return;
 
-  const startX = W / (total + 1);
+  const step = W / (count + 1);
   opponents.forEach((p, i) => {
-    const x = startX * (i + 1);
-    const y = 65;
+    const x = step * (i + 1);
+    const y = 70;
 
     if (p.isCurrent) {
-      ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
-      roundRect(ctx, x - 60, y - 5, 120, 60, 8, true, false);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.2)";
+      roundRect(ctx, x - 65, y - 10, 130, 60, 10, true, false);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      roundRect(ctx, x - 65, y - 10, 130, 60, 10, false, true);
     }
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 14px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(p.name, x, y + 15);
+    ctx.fillText(p.name, x, y + 12);
 
-    ctx.font = "12px sans-serif";
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText(`Cards: ${p.cardCount} | Score: ${p.totalScore}`, x, y + 35);
+    ctx.font = "13px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(`Cards: ${p.cardCount} | Pts: ${p.totalScore}`, x, y + 34);
   });
 }
 
 function renderMyHand(W, H) {
   const hand = gameState.myHand;
-  if (!hand) return;
+  if (!hand || hand.length === 0) return;
 
-  const cardW = Math.min(90, (W - 40) / Math.max(hand.length, 1));
-  const cardH = cardW * 1.4;
-  const spacing = Math.min(cardW + 5, (W - 60) / Math.max(hand.length, 1));
-  const totalWidth = (hand.length - 1) * spacing + cardW;
+  const cardW = Math.min(100, (W - 40) / (hand.length > 5 ? hand.length * 0.75 : hand.length));
+  const cardH = cardW * 1.45;
+  const maxOverlapSpacing = Math.min(cardW + 10, (W - 60 - cardW) / Math.max(hand.length - 1, 1));
+  
+  const totalWidth = (hand.length - 1) * maxOverlapSpacing + cardW;
   const startX = (W - totalWidth) / 2;
-  const startY = H - cardH - 25;
+  const startY = H - cardH - 20;
+
+  const curPlayer = gameState.players[gameState.currentTurnIndex];
+  const isMyTurn = curPlayer?.id === myId;
 
   hand.forEach((card, idx) => {
-    const x = startX + idx * spacing;
-    const y = startY;
-    
-    const curPlayer = gameState.players[gameState.currentTurnIndex];
-    const isMyTurn = curPlayer?.id === myId;
+    const x = startX + idx * maxOverlapSpacing;
     let isPlayable = isMyTurn && (card.color === 'Wild' || card.color === gameState.currentColor || card.value === gameState.activeValue);
+    
+    // Lift card up visually if it's valid to play
+    const y = startY - (isPlayable ? 24 : 0);
 
-    cardRects.push({ x, y, w: cardW, h: cardH, card });
-    renderCardFace(x, y - (isPlayable ? 12 : 0), cardW, cardH, card, isPlayable);
+    // Precise Hitbox Calculation (accounting for overlap)
+    const nextCardX = idx === hand.length - 1 ? x + cardW : startX + (idx + 1) * maxOverlapSpacing;
+    const hitW = nextCardX - x;
+
+    cardRects.push({
+      x: x,
+      y: y,
+      w: hitW,
+      fullW: cardW,
+      h: cardH,
+      card: card,
+      isPlayable: isPlayable
+    });
+
+    renderCardFace(x, y, cardW, cardH, card, isPlayable);
   });
 }
 
 function renderCardFace(x, y, w, h, card, highlight) {
+  ctx.save();
+  
+  // Drop Shadow
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 4;
+
+  // Outer White Border
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, x, y, w, h, 10, true, false);
+  ctx.restore();
+
+  // Card Inner Color Fill
+  const pal = PALETTE[card.color] || PALETTE.Wild;
+  const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+  grad.addColorStop(0, pal.gradient[0]);
+  grad.addColorStop(0.5, pal.gradient[1]);
+  grad.addColorStop(1, pal.gradient[2]);
+  ctx.fillStyle = grad;
+  roundRect(ctx, x + 4, y + 4, w - 8, h - 8, 7, true, false);
+
+  // Playable Yellow Highlight Ring
   if (highlight) {
-    ctx.fillStyle = "#f59e0b";
-    roundRect(ctx, x-2, y-2, w+4, h+4, 10, true, false);
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 4;
+    roundRect(ctx, x - 2, y - 2, w + 4, h + 4, 12, false, true);
   }
 
-  ctx.fillStyle = COLOR_MAP[card.color] || '#334155';
-  roundRect(ctx, x, y, w, h, 8, true, true);
-
+  // Center Oval
+  ctx.save();
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.ellipse(x + w/2, y + h/2, w/2.6, h/2.4, Math.PI / 4, 0, Math.PI * 2);
+  ctx.ellipse(x + w/2, y + h/2, w/2.8, h/2.5, Math.PI / 3.5, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
-  ctx.fillStyle = COLOR_MAP[card.color] === '#eab308' ? '#000000' : (card.color === 'Wild' ? '#8b5cf6' : COLOR_MAP[card.color]);
-  ctx.font = `bold ${Math.floor(w * 0.3)}px sans-serif`;
+  // Card Value / Symbol Graphic Rendering
+  let display = card.value;
+  if (card.value === 'Draw2') display = '+2';
+  if (card.value === 'Wild4') display = '+4';
+  if (card.value === 'Skip') display = '🚫';
+  if (card.value === 'Reverse') display = '🔄';
+
+  ctx.fillStyle = pal.text === '#ffffff' ? pal.main : '#1e293b';
+  ctx.font = `900 ${Math.floor(w * 0.35)}px sans-serif`;
   ctx.textAlign = "center";
-  
-  let displayText = card.value;
-  if (card.value === 'Draw2') displayText = '+2';
-  if (card.value === 'Wild4') displayText = '+4';
-  if (card.value === 'Skip') displayText = '🚫';
-  if (card.value === 'Reverse') displayText = '🔄';
+  ctx.textBaseline = "middle";
+  ctx.fillText(display, x + w/2, y + h/2 + 2);
 
-  ctx.fillText(displayText, x + w/2, y + h/2 + (w * 0.1));
+  // Corner Mini Numbers
+  ctx.font = `bold ${Math.floor(w * 0.18)}px sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(display, x + 12, y + 16);
+  ctx.fillText(display, x + w - 12, y + h - 16);
 }
 
 function renderCardBack(x, y, w, h, label) {
-  ctx.fillStyle = "#1e293b";
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 2;
-  roundRect(ctx, x, y, w, h, 8, true, true);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.4)";
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, x, y, w, h, 10, true, false);
+  ctx.restore();
+
+  ctx.fillStyle = "#0f172a";
+  roundRect(ctx, x + 4, y + 4, w - 8, h - 8, 7, true, false);
 
   ctx.fillStyle = "#ef4444";
   ctx.beginPath();
@@ -346,26 +420,27 @@ function renderCardBack(x, y, w, h, label) {
   ctx.fill();
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 12px sans-serif";
+  ctx.font = "900 12px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(label, x + w/2, y + h/2 + 4);
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, x + w/2, y + h/2);
 }
 
 function renderLogs(W, H) {
-  const logX = 15, logY = H - 140;
-  ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-  roundRect(ctx, logX, logY, 220, 120, 6, true, false);
+  const logX = 15, logY = H - 130;
+  ctx.fillStyle = "rgba(7, 10, 18, 0.75)";
+  roundRect(ctx, logX, logY, 230, 110, 8, true, false);
 
-  ctx.fillStyle = "#94a3b8";
+  ctx.fillStyle = "#64748b";
   ctx.font = "bold 11px sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("LOGS", logX + 8, logY + 16);
+  ctx.fillText("MATCH LOG", logX + 10, logY + 16);
 
-  ctx.font = "10px sans-serif";
+  ctx.font = "11px sans-serif";
   ctx.fillStyle = "#cbd5e1";
   const logs = gameState.logs || [];
-  logs.slice(-5).forEach((l, idx) => {
-    ctx.fillText(l, logX + 8, logY + 32 + (idx * 16));
+  logs.slice(-4).forEach((l, idx) => {
+    ctx.fillText(l, logX + 10, logY + 34 + (idx * 17));
   });
 }
 
@@ -386,7 +461,7 @@ function roundRect(ctx, x, y, w, h, radius, fill, stroke) {
 }
 
 // ==========================================
-// UNIFIED POINTER EVENT (TOUCH + MOUSE)
+// ACCURATE POINTER SELECTION HANDLER
 // ==========================================
 function handlePointerInput(e) {
   e.preventDefault();
@@ -396,7 +471,7 @@ function handlePointerInput(e) {
 
   if (!gameState) return;
 
-  // Lobby start button click
+  // 1. Lobby Start Button
   if (!gameState.gameStarted && startButtonRect) {
     if (clickX >= startButtonRect.x && clickX <= startButtonRect.x + startButtonRect.w &&
         clickY >= startButtonRect.y && clickY <= startButtonRect.y + startButtonRect.h) {
@@ -405,14 +480,14 @@ function handlePointerInput(e) {
     }
   }
 
-  // Draw card click
+  // 2. Draw Pile
   if (drawPileRect && clickX >= drawPileRect.x && clickX <= drawPileRect.x + drawPileRect.w &&
       clickY >= drawPileRect.y && clickY <= drawPileRect.y + drawPileRect.h) {
     socket.emit('drawCard');
     return;
   }
 
-  // Shout UNO click
+  // 3. UNO Shout Button
   if (unoButtonRect) {
     const dist = Math.hypot(clickX - (unoButtonRect.x + unoButtonRect.w/2), clickY - (unoButtonRect.y + unoButtonRect.h/2));
     if (dist <= unoButtonRect.w / 2) {
@@ -421,10 +496,14 @@ function handlePointerInput(e) {
     }
   }
 
-  // Card Hand selection click
+  // 4. Hand Card Selection (Checked backwards: right-to-left overlap priority)
   for (let i = cardRects.length - 1; i >= 0; i--) {
     const r = cardRects[i];
-    if (clickX >= r.x && clickX <= r.x + r.w && clickY >= r.y && clickY <= r.y + r.h) {
+    
+    // Check hit against full width for rightmost card, or overlap width for others
+    const checkWidth = (i === cardRects.length - 1) ? r.fullW : r.w;
+    
+    if (clickX >= r.x && clickX <= r.x + checkWidth && clickY >= r.y && clickY <= r.y + r.h) {
       if (r.card.color === 'Wild') {
         pendingWildCardId = r.card.id;
         document.getElementById('colorModal').style.display = 'flex';
@@ -436,9 +515,9 @@ function handlePointerInput(e) {
   }
 }
 
-// Attach Pointer Events to avoid screen coordinate mismatch
 canvas.addEventListener('pointerdown', handlePointerInput);
 window.onload = resizeCanvas;
 </script>
 </body>
 </html>
+
