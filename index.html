@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>UNO Master - Pro Canvas Edition</title>
+  <title>UNO Master - Touch Optimized</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
     body, html { 
@@ -28,7 +28,6 @@
     .color-btn {
       height: 65px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.3); font-weight: 800;
       font-size: 18px; color: white; cursor: pointer; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-      transition: transform 0.15s ease;
     }
     .color-btn:active { transform: scale(0.95); }
     .bg-Red { background: linear-gradient(135deg, #ef4444, #dc2626); } 
@@ -144,7 +143,7 @@ function respondChallenge(doChallenge) {
 }
 
 // ==========================================
-// RENDERING SYSTEM
+// RENDERING ENGINE
 // ==========================================
 function render() {
   const W = window.innerWidth;
@@ -152,7 +151,7 @@ function render() {
 
   ctx.clearRect(0, 0, W, H);
 
-  // Casino Felt Radial Background
+  // Casino Background
   const bgGrad = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, Math.max(W, H)*0.7);
   bgGrad.addColorStop(0, '#1e293b');
   bgGrad.addColorStop(1, '#070a12');
@@ -182,10 +181,7 @@ function renderLobby(W, H) {
   ctx.fillStyle = "#ffffff";
   ctx.font = "900 36px sans-serif";
   ctx.textAlign = "center";
-  ctx.shadowColor = "rgba(56, 189, 248, 0.5)";
-  ctx.shadowBlur = 15;
   ctx.fillText("UNO ARENA", W / 2, H / 2 - 130);
-  ctx.shadowBlur = 0;
 
   ctx.font = "16px sans-serif";
   ctx.fillStyle = "#94a3b8";
@@ -218,7 +214,7 @@ function renderLobby(W, H) {
 
 function renderHeader(W, H) {
   ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
-  ctx.fillRect(0, 0, W, 50);
+  ctx.fillRect(0, 0, W, 45);
 
   const curPlayer = gameState.players[gameState.currentTurnIndex];
   const isMyTurn = curPlayer?.id === myId;
@@ -226,26 +222,22 @@ function renderHeader(W, H) {
   ctx.fillStyle = isMyTurn ? "#4ade80" : "#ffffff";
   ctx.font = "bold 16px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(isMyTurn ? "👉 YOUR TURN!" : `Turn: ${curPlayer ? curPlayer.name : ''}`, W / 2, 32);
+  ctx.fillText(isMyTurn ? "👉 YOUR TURN!" : `Turn: ${curPlayer ? curPlayer.name : ''}`, W / 2, 28);
 }
 
 function renderTableCenter(W, H) {
   const cX = W / 2;
-  const cY = H / 2 - 20;
+  const cY = H / 2 - 60; // 整体中心区域往上提一点，给手牌留地方
 
-  // Active Color Aura Ring
   const activeCol = PALETTE[gameState.currentColor]?.main || '#ffffff';
   ctx.strokeStyle = activeCol;
-  ctx.lineWidth = 6;
-  ctx.shadowColor = activeCol;
-  ctx.shadowBlur = 20;
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(cX, cY, 100, 0, Math.PI * 2);
+  ctx.arc(cX, cY, 90, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.shadowBlur = 0;
 
-  const cardW = 90, cardH = 135;
-  const drawX = cX - 110, drawY = cY - cardH / 2;
+  const cardW = 85, cardH = 125;
+  const drawX = cX - 105, drawY = cY - cardH / 2;
   drawPileRect = { x: drawX, y: drawY, w: cardW, h: cardH };
   renderCardBack(drawX, drawY, cardW, cardH, `DRAW (${gameState.drawPileCount})`);
 
@@ -254,27 +246,23 @@ function renderTableCenter(W, H) {
     renderCardFace(discardX, discardY, cardW, cardH, gameState.topDiscard, false);
   }
 
-  // Shout UNO Button
-  const unoSize = 70;
-  const unoX = cX + 130, unoY = cY - unoSize / 2;
+  // UNO 喊牌按钮
+  const unoSize = 65;
+  const unoX = cX + 125, unoY = cY - unoSize / 2;
   unoButtonRect = { x: unoX, y: unoY, w: unoSize, h: unoSize };
 
-  const unoGrad = ctx.createRadialGradient(unoX + unoSize/2, unoY + unoSize/2, 5, unoX + unoSize/2, unoY + unoSize/2, unoSize/2);
-  unoGrad.addColorStop(0, '#f43f5e');
-  unoGrad.addColorStop(1, '#be123c');
-  ctx.fillStyle = unoGrad;
+  ctx.fillStyle = "#f43f5e";
   ctx.beginPath();
   ctx.arc(unoX + unoSize/2, unoY + unoSize/2, unoSize/2, 0, Math.PI * 2);
   ctx.fill();
-
   ctx.lineWidth = 3;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "900 18px sans-serif";
+  ctx.font = "900 16px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("UNO!", unoX + unoSize/2, unoY + unoSize/2 + 6);
+  ctx.fillText("UNO!", unoX + unoSize/2, unoY + unoSize/2 + 5);
 }
 
 function renderOpponents(W, H) {
@@ -285,24 +273,24 @@ function renderOpponents(W, H) {
   const step = W / (count + 1);
   opponents.forEach((p, i) => {
     const x = step * (i + 1);
-    const y = 70;
+    const y = 60;
 
     if (p.isCurrent) {
       ctx.fillStyle = "rgba(56, 189, 248, 0.2)";
-      roundRect(ctx, x - 65, y - 10, 130, 60, 10, true, false);
+      roundRect(ctx, x - 60, y - 8, 120, 52, 10, true, false);
       ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 2;
-      roundRect(ctx, x - 65, y - 10, 130, 60, 10, false, true);
+      roundRect(ctx, x - 60, y - 8, 120, 52, 10, false, true);
     }
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 15px sans-serif";
+    ctx.font = "bold 14px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(p.name, x, y + 12);
+    ctx.fillText(p.name, x, y + 10);
 
-    ctx.font = "13px sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText(`Cards: ${p.cardCount} | Pts: ${p.totalScore}`, x, y + 34);
+    ctx.fillText(`Cards: ${p.cardCount} | Pts: ${p.totalScore}`, x, y + 30);
   });
 }
 
@@ -310,34 +298,36 @@ function renderMyHand(W, H) {
   const hand = gameState.myHand;
   if (!hand || hand.length === 0) return;
 
-  const cardW = Math.min(100, (W - 40) / (hand.length > 5 ? hand.length * 0.75 : hand.length));
+  // 1. 调整卡牌尺寸与横向间距
+  const cardW = Math.min(95, (W - 30) / (hand.length > 6 ? hand.length * 0.7 : hand.length));
   const cardH = cardW * 1.45;
-  const maxOverlapSpacing = Math.min(cardW + 10, (W - 60 - cardW) / Math.max(hand.length - 1, 1));
+  const spacing = Math.min(cardW + 12, (W - 50 - cardW) / Math.max(hand.length - 1, 1));
   
-  const totalWidth = (hand.length - 1) * maxOverlapSpacing + cardW;
+  const totalWidth = (hand.length - 1) * spacing + cardW;
   const startX = (W - totalWidth) / 2;
-  const startY = H - cardH - 20;
+  
+  // 核心改动：把 Y 坐标整体往上拉高（距离底部 100px），彻底避开屏幕边缘手势
+  const baseStartY = H - cardH - 100;
 
   const curPlayer = gameState.players[gameState.currentTurnIndex];
   const isMyTurn = curPlayer?.id === myId;
 
   hand.forEach((card, idx) => {
-    const x = startX + idx * maxOverlapSpacing;
+    const x = startX + idx * spacing;
     let isPlayable = isMyTurn && (card.color === 'Wild' || card.color === gameState.currentColor || card.value === gameState.activeValue);
     
-    // Lift card up visually if it's valid to play
-    const y = startY - (isPlayable ? 24 : 0);
+    // 能够出牌时，向上悬浮突出 35px
+    const y = baseStartY - (isPlayable ? 35 : 0);
 
-    // Precise Hitbox Calculation (accounting for overlap)
-    const nextCardX = idx === hand.length - 1 ? x + cardW : startX + (idx + 1) * maxOverlapSpacing;
-    const hitW = nextCardX - x;
+    // 计算实际呈现和命中的宽度（最后一张牌取全宽，前面重叠牌取间距）
+    const hitW = (idx === hand.length - 1) ? cardW : spacing;
 
+    // 记录 Hitbox 并外扩 15px 触摸盲区
     cardRects.push({
-      x: x,
-      y: y,
-      w: hitW,
-      fullW: cardW,
-      h: cardH,
+      x: x - 15,
+      y: y - 15,
+      w: hitW + 15,
+      h: cardH + 30,
       card: card,
       isPlayable: isPlayable
     });
@@ -348,18 +338,14 @@ function renderMyHand(W, H) {
 
 function renderCardFace(x, y, w, h, card, highlight) {
   ctx.save();
-  
-  // Drop Shadow
   ctx.shadowColor = "rgba(0,0,0,0.5)";
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 4;
 
-  // Outer White Border
   ctx.fillStyle = "#ffffff";
   roundRect(ctx, x, y, w, h, 10, true, false);
   ctx.restore();
 
-  // Card Inner Color Fill
   const pal = PALETTE[card.color] || PALETTE.Wild;
   const grad = ctx.createLinearGradient(x, y, x + w, y + h);
   grad.addColorStop(0, pal.gradient[0]);
@@ -368,14 +354,14 @@ function renderCardFace(x, y, w, h, card, highlight) {
   ctx.fillStyle = grad;
   roundRect(ctx, x + 4, y + 4, w - 8, h - 8, 7, true, false);
 
-  // Playable Yellow Highlight Ring
+  // 可打出牌时的金色高亮框
   if (highlight) {
     ctx.strokeStyle = "#facc15";
     ctx.lineWidth = 4;
     roundRect(ctx, x - 2, y - 2, w + 4, h + 4, 12, false, true);
   }
 
-  // Center Oval
+  // 椭圆底纹
   ctx.save();
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
@@ -383,7 +369,7 @@ function renderCardFace(x, y, w, h, card, highlight) {
   ctx.fill();
   ctx.restore();
 
-  // Card Value / Symbol Graphic Rendering
+  // 牌面文字/符号
   let display = card.value;
   if (card.value === 'Draw2') display = '+2';
   if (card.value === 'Wild4') display = '+4';
@@ -396,7 +382,7 @@ function renderCardFace(x, y, w, h, card, highlight) {
   ctx.textBaseline = "middle";
   ctx.fillText(display, x + w/2, y + h/2 + 2);
 
-  // Corner Mini Numbers
+  // 角标
   ctx.font = `bold ${Math.floor(w * 0.18)}px sans-serif`;
   ctx.fillStyle = "#ffffff";
   ctx.fillText(display, x + 12, y + 16);
@@ -404,12 +390,8 @@ function renderCardFace(x, y, w, h, card, highlight) {
 }
 
 function renderCardBack(x, y, w, h, label) {
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.4)";
-  ctx.shadowBlur = 8;
   ctx.fillStyle = "#ffffff";
   roundRect(ctx, x, y, w, h, 10, true, false);
-  ctx.restore();
 
   ctx.fillStyle = "#0f172a";
   roundRect(ctx, x + 4, y + 4, w - 8, h - 8, 7, true, false);
@@ -427,20 +409,15 @@ function renderCardBack(x, y, w, h, label) {
 }
 
 function renderLogs(W, H) {
-  const logX = 15, logY = H - 130;
-  ctx.fillStyle = "rgba(7, 10, 18, 0.75)";
-  roundRect(ctx, logX, logY, 230, 110, 8, true, false);
+  const logX = 15, logY = H - 90;
+  ctx.fillStyle = "rgba(7, 10, 18, 0.6)";
+  roundRect(ctx, logX, logY, 200, 75, 8, true, false);
 
-  ctx.fillStyle = "#64748b";
-  ctx.font = "bold 11px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("MATCH LOG", logX + 10, logY + 16);
-
-  ctx.font = "11px sans-serif";
-  ctx.fillStyle = "#cbd5e1";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "10px sans-serif";
   const logs = gameState.logs || [];
-  logs.slice(-4).forEach((l, idx) => {
-    ctx.fillText(l, logX + 10, logY + 34 + (idx * 17));
+  logs.slice(-3).forEach((l, idx) => {
+    ctx.fillText(l, logX + 8, logY + 20 + (idx * 18));
   });
 }
 
@@ -461,7 +438,7 @@ function roundRect(ctx, x, y, w, h, radius, fill, stroke) {
 }
 
 // ==========================================
-// ACCURATE POINTER SELECTION HANDLER
+// 点击/触摸 命中处理
 // ==========================================
 function handlePointerInput(e) {
   e.preventDefault();
@@ -471,7 +448,7 @@ function handlePointerInput(e) {
 
   if (!gameState) return;
 
-  // 1. Lobby Start Button
+  // 1. 房间开始按钮
   if (!gameState.gameStarted && startButtonRect) {
     if (clickX >= startButtonRect.x && clickX <= startButtonRect.x + startButtonRect.w &&
         clickY >= startButtonRect.y && clickY <= startButtonRect.y + startButtonRect.h) {
@@ -480,14 +457,14 @@ function handlePointerInput(e) {
     }
   }
 
-  // 2. Draw Pile
+  // 2. 摸牌堆
   if (drawPileRect && clickX >= drawPileRect.x && clickX <= drawPileRect.x + drawPileRect.w &&
       clickY >= drawPileRect.y && clickY <= drawPileRect.y + drawPileRect.h) {
     socket.emit('drawCard');
     return;
   }
 
-  // 3. UNO Shout Button
+  // 3. 喊 UNO 按钮
   if (unoButtonRect) {
     const dist = Math.hypot(clickX - (unoButtonRect.x + unoButtonRect.w/2), clickY - (unoButtonRect.y + unoButtonRect.h/2));
     if (dist <= unoButtonRect.w / 2) {
@@ -496,14 +473,10 @@ function handlePointerInput(e) {
     }
   }
 
-  // 4. Hand Card Selection (Checked backwards: right-to-left overlap priority)
+  // 4. 手牌点击：从最上层（右到左）依次检测
   for (let i = cardRects.length - 1; i >= 0; i--) {
     const r = cardRects[i];
-    
-    // Check hit against full width for rightmost card, or overlap width for others
-    const checkWidth = (i === cardRects.length - 1) ? r.fullW : r.w;
-    
-    if (clickX >= r.x && clickX <= r.x + checkWidth && clickY >= r.y && clickY <= r.y + r.h) {
+    if (clickX >= r.x && clickX <= r.x + r.w && clickY >= r.y && clickY <= r.y + r.h) {
       if (r.card.color === 'Wild') {
         pendingWildCardId = r.card.id;
         document.getElementById('colorModal').style.display = 'flex';
@@ -520,4 +493,3 @@ window.onload = resizeCanvas;
 </script>
 </body>
 </html>
-
