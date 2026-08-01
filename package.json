@@ -1,20 +1,16 @@
 {
-  "name": "landlord-cyber-master",
-  "version": "3.0.0",
-  "description": "Cyberpunk Commercial Landlord Game with 2FA TOTP Security, Shop, Admin Console, and Canvas Engine",
+  "name": "uno-canvas-game",
+  "version": "1.0.0",
+  "description": "Full-stack interactive UNO game powered by Node.js, Socket.IO, MongoDB, and HTML5 Canvas.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "mongoose": "^8.3.0",
-    "otplib": "^12.0.1",
-    "qrcode": "^1.5.3",
+    "mongoose": "^8.3.1",
     "socket.io": "^4.7.5"
   }
 }
